@@ -1,5 +1,6 @@
-import NumberSearch from "@/views/NumberSearch.vue";
-import LotteryAnalysis from "@/views/LotteryAnalysis.vue";
+import NumberSearch from "@/views/NumberSearch/index.vue";
+import LotteryAnalysis from "@/views/LotteryAnalysis/index.vue";
+import PositionNextAnalysis from "@/views/PositionNextAnalysis/index.vue";
 
 export const routes = [
 	{
@@ -15,6 +16,11 @@ export const routes = [
 		path: "/lottery-analysis",
 		name: "lottery-analysis",
 		component: LotteryAnalysis,
+	},
+	{
+		path: "/position-next-analysis",
+		name: "position-next-analysis",
+		component: PositionNextAnalysis,
 	},
 
 	// {

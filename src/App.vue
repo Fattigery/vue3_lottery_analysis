@@ -1,7 +1,7 @@
 <script setup>
 	import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 	import { ref, computed, watch, onMounted } from "vue";
-	import NumberSearch from "./views/NumberSearch.vue";
+	import NumberSearch from "./views/NumberSearch/index.vue";
 
 	const route = useRoute();
 	const router = useRouter();
@@ -38,6 +38,7 @@
 				<el-menu-item index="/">首页</el-menu-item>
 				<el-menu-item index="/number-search">号码查询</el-menu-item>
 				<el-menu-item index="/lottery-analysis">彩票分析</el-menu-item>
+				<el-menu-item index="/position-next-analysis">位置号码分析</el-menu-item>
 			</el-menu>
 		</div>
 	</header>
