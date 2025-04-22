@@ -231,9 +231,8 @@
 
 		<!-- 号码频率总统计表 -->
 		<div class="analysis-section" id="number-frequency-section">
-			<h3>号码出现频率统计</h3>
+			<h3>号码频率总统计表 ({{ freqTotalPeriodRange }})</h3>
 			<div v-if="!isFrequencyLoading">
-				<h3>号码频率总统计表 ({{ freqTotalPeriodRange }})</h3>
 				<div class="stats-table-container">
 					<table class="stats-table with-row-headers">
 						<thead>
@@ -269,7 +268,7 @@
 </template>
 
 <script setup>
-	import { ref, onMounted, computed } from "vue";
+	import { ref, onMounted, computed, watch } from "vue";
 	import { ElMessage } from "element-plus";
 
 	// ==================== 响应式数据 ====================
@@ -442,7 +441,7 @@
 	});
 
 	/**
-	 * 计算所选期号后有多少条数据参与分析的提示文本
+	 * 计算所选期号前有多少条数据参与分析的提示文本
 	 * @returns {string} 提示文本
 	 */
 	const remainCountTip = computed(() => {
@@ -451,10 +450,9 @@
 		const idx = historyData.value.findIndex((item) => item.expect === selectedDrawPeriod.value);
 		if (idx < 0) return "";
 
-		// 分析的数据是从选中期号之后开始的数据
-		// 如果选择的是最新一期(idx=0)，则使用整个历史数据进行分析
-		const dataCount = idx === 0 ? historyData.value.length : historyData.value.length - idx - 1;
-		// 实际参与分析的数据数量是分析期数与可用数据量的较小值
+		// 分析的数据是从选中期号之前开始的数据
+		const dataCount = historyData.value.length - idx - 1;
+		// 实际参与分析的数据数量取决于分析期数，确保不超过可用数据量
 		const participatingData = Math.min(dataCount, limit.value);
 		const isInsufficient = participatingData < limit.value;
 
@@ -462,7 +460,7 @@
 	});
 
 	/**
-	 * 判断所选期号后的数据是否不足
+	 * 判断所选期号前的数据是否不足
 	 * 用于控制提示文本的样式
 	 * @returns {boolean} 数据是否不足
 	 */
@@ -472,6 +470,7 @@
 		const idx = historyData.value.findIndex((item) => item.expect === selectedDrawPeriod.value);
 		if (idx < 0) return false;
 
+		// 需要有至少limit.value条数据
 		return historyData.value.length - idx - 1 < limit.value;
 	});
 
@@ -492,7 +491,8 @@
 		analysisLoadingText.value = "正在获取数据，请稍候...";
 
 		// 计算需要请求的数据量
-		let requestLimit = limit.value;
+		// 修改：始终多请求一条数据，确保分析数据与分析期数一致
+		let requestLimit = limit.value + 1; // 多请求一条数据
 
 		// 如果已经选择了期号且不是最新一期，计算期号差距
 		if (selectedDrawPeriod.value && historyData.value.length > 0) {
@@ -501,8 +501,8 @@
 			if (selectedIndex > 0) {
 				// 计算选中期号与最新期号的差距
 				const periodDiff = selectedIndex;
-				// 需要请求的数据量 = 分析期数 + 期号差距，不再额外加1
-				requestLimit = limit.value + periodDiff;
+				// 需要请求的数据量 = 分析期数 + 期号差距 + 1
+				requestLimit = limit.value + periodDiff + 1;
 				console.log(`选中期号与最新期相差${periodDiff}期，需要请求${requestLimit}期数据`);
 			}
 		}
@@ -585,6 +585,9 @@
 	/**
 	 * 期号变化时的处理函数
 	 * 当用户选择不同的期号时触发分析
+	 * 修改：确保分析逻辑与新需求一致，截至到所选期号的上一期
+	 * 并确保数据量与分析期数一致
+	 * 同时更新号码频率统计表
 	 */
 	function handleDrawPeriodChange() {
 		// 验证数据有效性
@@ -600,31 +603,43 @@
 			return;
 		}
 
+		// 检查是否有前面的历史数据
+		if (idx >= historyData.value.length - 1) {
+			isAnalysisLoading.value = true;
+			analysisLoadingText.value = "所选期号之前没有历史数据，无法分析";
+			return;
+		}
+
 		// 检查是否有足够的数据进行分析
+		// 现在考虑到额外一条数据的需求，要确保有limit.value + 1条数据
 		const availableData = historyData.value.length - idx - 1;
 
 		// 如果数据不足且不是最新一期，则需要重新请求数据
 		if (availableData < limit.value && idx > 0) {
 			// 数据不足，需要重新获取更多数据
 			isAnalysisLoading.value = true;
-			analysisLoadingText.value = `所选期号后的数据不足${limit.value}期，正在获取更多数据...`;
+			analysisLoadingText.value = `所选期号之前的数据不足${limit.value}期，正在获取更多数据...`;
 			fetchAndAnalyze(); // 重新获取数据
 		} else {
 			// 数据足够或者是最新一期，直接分析
 			analyzeDataBySelectedPeriod();
 		}
+
+		// 无论如何，当期号变化时都要更新频率统计表
+		fetchLatestFrequencyData();
 	}
 
 	/**
 	 * 根据选中的期号分析数据
 	 * 主要流程:
 	 * 1. 找到选中期号在历史数据中的位置
-	 * 2. 确定分析的数据范围（获取该期号之后的指定期数数据）
+	 * 2. 确定分析的数据范围（获取该期号之前的指定期数数据）
 	 * 3. 获取选中期号的开奖号码
 	 * 4. 调用analyzeData进行具体分析
 	 * 5. 如果数据不足，自动触发获取更多数据
 	 *
 	 * 该函数是分析流程的核心枢纽，连接用户的期号选择与实际的数据分析
+	 * 修改：分析时截至到所选期号的上一期，所选期号不参与历史数据查找但参与号码统计
 	 */
 	function analyzeDataBySelectedPeriod() {
 		// 验证数据有效性
@@ -632,26 +647,31 @@
 
 		// 找到选中期号在历史数据中的索引
 		const idx = historyData.value.findIndex((item) => item.expect === selectedDrawPeriod.value);
-		let periodNum = limit.value;
 		let selectedNumbers = [];
 
 		if (idx !== -1) {
 			// 找到了选中的期号
+			// 检查是否有前面的历史数据用于分析
+			if (idx >= historyData.value.length - 1) {
+				// 如果选中的是最后一期，没有前面的数据可分析
+				isAnalysisLoading.value = true;
+				analysisLoadingText.value = "所选期号之前没有历史数据，无法分析";
+				return;
+			}
+
 			// 检查是否有足够的数据进行分析
 			const availableData = historyData.value.length - idx - 1;
 
 			// 如果数据不足但仍有数据，使用可用数据进行分析
-			if (availableData < periodNum && availableData > 0) {
-				// 使用可用的数据量
-				periodNum = availableData;
+			if (availableData < limit.value && availableData > 0) {
 				// 只在直接调用analyzeDataBySelectedPeriod时显示提示，避免重复提示
 				if (!isAnalysisLoading.value) {
-					ElMessage.warning(`所选期号后的数据不足${limit.value}期，将使用可用的${availableData}期数据进行分析`);
+					ElMessage.warning(`所选期号之前的数据不足${limit.value}期，将使用可用的${availableData}期数据进行分析`);
 				}
 			} else if (availableData <= 0) {
 				// 如果没有可用数据，则显示提示信息
 				isAnalysisLoading.value = true;
-				analysisLoadingText.value = "所选期号后没有数据，请选择其他期号";
+				analysisLoadingText.value = "所选期号之前没有数据，请选择其他期号";
 				return;
 			}
 
@@ -671,8 +691,8 @@
 		}
 
 		// 使用选中的期号及其开奖号码进行分析
-		// 注意：analyzeData现在会负责选择合适的历史数据
-		analyzeData(selectedNumbers, historyData.value, periodNum);
+		// 传递实际的分析期数，analyzeData会限制使用的数据量
+		analyzeData(selectedNumbers, historyData.value, limit.value);
 	}
 
 	/**
@@ -708,13 +728,23 @@
 		}
 
 		// 获取用于分析的历史数据（不包含当前选中期号）
-		// 无论选择哪个期号（包括最新期号），都只使用该期号之后的数据进行分析
+		// 修改：截至分析的期号应该是所选期号的上一期，所选期号不参与历史数据的查找
 		// 注意：historyData是按期号倒序排列的（最新的在前）
 		const dataToAnalyze = historyData.slice(idx + 1);
 
+		// 如果没有足够的历史数据，显示提示
+		if (dataToAnalyze.length === 0) {
+			isAnalysisLoading.value = true;
+			analysisLoadingText.value = "所选期号之前没有历史数据，无法分析";
+			return;
+		}
+
+		// 确保只使用所需的期数数据（限制为请求的期数）
+		const limitedData = dataToAnalyze.length > periodCount ? dataToAnalyze.slice(0, periodCount) : dataToAnalyze;
+
 		// 获取分析数据的第一期和最后一期的期号
-		const firstPeriod = dataToAnalyze[dataToAnalyze.length - 1]?.expect || "--";
-		const lastPeriod = dataToAnalyze[0]?.expect || "--";
+		const firstPeriod = limitedData[limitedData.length - 1]?.expect || "--";
+		const lastPeriod = limitedData[0]?.expect || "--";
 		const periodRange = `从${firstPeriod}期到${lastPeriod}期`;
 		totalStatsRange.value = periodRange;
 
@@ -724,7 +754,13 @@
 
 		// 分析每个位置(百位、十位、个位)
 		for (let i = 0; i < 3; i++) {
-			const positionData = analyzePositionForTable(i, currentNumbers[i], dataToAnalyze, allPositionCounts);
+			const positionData = analyzePositionForTable(
+				i,
+				currentNumbers[i],
+				limitedData,
+				allPositionCounts,
+				selectedNumbers
+			);
 			positionAnalysis.value.push(positionData);
 		}
 
@@ -748,15 +784,16 @@
 	 * 4. 整合分析结果
 	 *
 	 * 注意: 传入的data不包含当前选中的期号，只包含之前的历史数据
-	 * 但当前选中的期号作为"下一期"参与统计
+	 * 修改: 所选期号不参与历史数据的查找，但其开奖号码要参与统计
 	 *
 	 * @param {number} position 位置索引(0:百位, 1:十位, 2:个位)
 	 * @param {number} digit 要分析的数字(0-9)
 	 * @param {Array} data 历史数据数组（不包含当前选中期号）
 	 * @param {Array} allPositionCounts 用于累计各数字出现次数的数组
+	 * @param {Array} selectedNumbers 当前选中期号的开奖号码（用于统计）
 	 * @returns {Object} 包含分析结果的对象
 	 */
-	function analyzePositionForTable(position, digit, data, allPositionCounts) {
+	function analyzePositionForTable(position, digit, data, allPositionCounts, selectedNumbers) {
 		const positionNames = ["百位", "十位", "个位"];
 		// 获取分析数据的第一期和最后一期的期号
 		const firstPeriod = data[data.length - 1]?.expect || "--";
@@ -767,13 +804,8 @@
 		const matchData = [];
 		const nextDigitCounts = Array(10).fill(0);
 
-		// 获取当前选中期号的开奖号码（用于计算最后一期的下一期）
-		const selectedDraw = historyData.value.find((item) => item.expect === selectedDrawPeriod.value);
-		const selectedNumbers = selectedDraw?.opencode
-			? selectedDraw.opencode.split(",").map(Number)
-			: selectedDraw?.number
-			? selectedDraw.number.split(/\s+/).map(Number)
-			: [];
+		// 获取当前选中期号的开奖号码用于统计
+		const currentNumbers = selectedNumbers.map(Number);
 
 		// 查找历史数据中包含指定数字的期数
 		for (let i = 0; i < data.length; i++) {
@@ -798,17 +830,9 @@
 				// 获取下一期的号码
 				let nextDraw, nextNumbers;
 
-				// 如果当前期是历史数据的第一项（最新的历史数据），
-				// 且当前选中的期号是最新一期（即索引为0），
-				// 则当前选中的期号是下一期
-				if (i === 0 && selectedDrawPeriod.value === historyData.value[0].expect) {
-					nextDraw = {
-						expect: selectedDrawPeriod.value,
-						opencode: selectedNumbers.join(","),
-					};
-					nextNumbers = selectedNumbers;
-				} else if (i > 0) {
-					// 否则，下一期是历史数据中的前一项
+				// 判断是否有下一期数据
+				if (i > 0) {
+					// 下一期是历史数据中的前一项
 					nextDraw = data[i - 1];
 					nextNumbers = nextDraw.opencode
 						? nextDraw.opencode.split(",").map(Number)
@@ -816,9 +840,10 @@
 						? nextDraw.number.split(/\s+/).map(Number)
 						: [];
 				} else {
-					// 没有下一期数据
-					nextDraw = { expect: "待开奖", opencode: "待开奖" };
-					nextNumbers = [];
+					// 如果是历史数据中的第一条记录，则下一期是所选期号
+					// 重要修改：所选期号不参与历史数据的查找，但其开奖号码参与统计
+					nextDraw = { expect: selectedDrawPeriod.value, opencode: selectedNumbers.join(",") };
+					nextNumbers = selectedNumbers.map(Number);
 				}
 
 				// 添加到表格数据
@@ -846,8 +871,9 @@
 			}
 		}
 
-		// 获取位置频率统计
-		const freqStats = getPositionFrequencyData(position);
+		// 获取位置频率统计 - 使用latestFrequencyData.value中的数据
+		// 这些数据是从所选期号开始的50期数据
+		const positionStats = calculatePositionStats(position, latestFrequencyData.value);
 
 		// 返回完整的分析结果
 		return {
@@ -857,25 +883,21 @@
 			matchData,
 			digitStatsData: [digitStatsRow],
 			periodRange,
-			freqPeriodRange: freqStats.periodRange,
-			freqStatsData: [freqStats.data],
+			freqPeriodRange: positionStats.periodRange,
+			freqStatsData: [positionStats.data],
 		};
 	}
 
 	/**
-	 * 获取指定位置的号码频率统计数据
-	 * 使用最新50期数据统计每个位置0-9出现的频率
+	 * 计算指定位置的号码频率统计
+	 * 使用从所选期号开始的50期数据
 	 *
 	 * @param {number} position 位置索引(0:百位, 1:十位, 2:个位)
+	 * @param {Array} data 用于统计的数据数组
 	 * @returns {Object} 包含统计数据和期号范围的对象
 	 */
-	function getPositionFrequencyData(position) {
-		const positionNames = ["百位", "十位", "个位"];
-
-		// 使用最新50期数据
-		const dataToUse = latestFrequencyData.value || [];
-
-		if (dataToUse.length === 0) {
+	function calculatePositionStats(position, data) {
+		if (!data || data.length === 0) {
 			// 返回空对象但确保所有数字属性都已初始化
 			const emptyRow = {};
 			for (let i = 0; i <= 9; i++) {
@@ -888,16 +910,16 @@
 			};
 		}
 
-		// 获取最新50期数据的第一期和最后一期的期号
-		const freqFirstPeriod = dataToUse[dataToUse.length - 1]?.expect || "--";
-		const freqLastPeriod = dataToUse[0]?.expect || "--";
-		const periodRange = `最新${dataToUse.length}期: 从${freqFirstPeriod}期到${freqLastPeriod}期`;
+		// 获取数据的第一期和最后一期的期号
+		const freqFirstPeriod = data[data.length - 1]?.expect || "--";
+		const freqLastPeriod = data[0]?.expect || "--";
+		const periodRange = `${data.length}期: 从${freqFirstPeriod}期到${freqLastPeriod}期`;
 
 		// 初始化统计数组
 		const digitCounts = Array(10).fill(0);
 
 		// 遍历数据，统计指定位置数字出现次数
-		dataToUse.forEach((item) => {
+		data.forEach((item) => {
 			// 获取开奖号码
 			let numbers = [];
 			if (item.opencode) {
@@ -933,19 +955,46 @@
 
 	/**
 	 * 获取最新50期数据并更新号码频率统计
+	 * 修改：从所选期号往前获取50期数据进行统计
 	 * 单独获取频率统计数据，确保使用最新的数据
 	 */
 	function fetchLatestFrequencyData() {
 		isFrequencyLoading.value = true;
 		frequencyLoadingText.value = "正在获取频率统计数据，请稍候...";
 
-		// 固定获取最新50期数据
+		// 固定获取50期数据
 		const frequencyDataLimit = 50;
+		let requestLimit = frequencyDataLimit;
+		let page = 1;
+
+		// 如果有选择的期号，则计算与最新期的差距
+		if (selectedDrawPeriod.value && historyData.value.length > 0) {
+			const selectedIndex = historyData.value.findIndex((item) => item.expect === selectedDrawPeriod.value);
+			// 如果找到选中的期号
+			if (selectedIndex >= 0) {
+				// 计算选中期号与最新期号的差距
+				const periodDiff = selectedIndex;
+
+				// 如果差距为0（选择的是最新期），则直接请求最新的50期
+				if (periodDiff === 0) {
+					requestLimit = frequencyDataLimit;
+					page = 1;
+				} else {
+					// 否则，需要计算页码和请求数量
+					// 如果差距是10期，需要请求60期数据(10+50)，确保包含选中期号及之后的50期
+					requestLimit = periodDiff + frequencyDataLimit;
+					page = 1;
+					console.log(
+						`选中期号与最新期相差${periodDiff}期，需要请求${requestLimit}期数据，确保包含所选期号及之后的50期`
+					);
+				}
+			}
+		}
 
 		// 添加时间戳防止缓存
 		const timestamp = new Date().getTime();
 		fetch(
-			`https://api.hcaiy.com/api/index/historyList?caipiaoid=${caipiaoid.value}&limit=${frequencyDataLimit}&page=1&_=${timestamp}`
+			`https://api.hcaiy.com/api/index/historyList?caipiaoid=${caipiaoid.value}&limit=${requestLimit}&page=${page}&_=${timestamp}`
 		)
 			.then((res) => {
 				if (!res.ok) {
@@ -974,17 +1023,38 @@
 							return processedItem;
 						});
 
-						// 存储最新50期数据到全局变量，供位置频率统计使用
+						// 存储频率统计数据
 						latestFrequencyData.value = processedData;
 
-						// 更新号码频率统计
-						updateNumberFrequencyStatsForTable(processedData);
-
-						// 如果当前正在显示分析结果，重新分析以更新位置频率统计
-						if (historyData.value.length > 0 && selectedDrawPeriod.value) {
-							analyzeDataBySelectedPeriod();
+						// 如果选中了期号，找出该期号在数据中的位置
+						let selectedIdx = 0;
+						if (selectedDrawPeriod.value) {
+							const idx = processedData.findIndex((item) => item.expect === selectedDrawPeriod.value);
+							if (idx >= 0) {
+								selectedIdx = idx;
+							}
 						}
+
+						// 从所选期号开始，获取往后50期数据进行统计
+						// 注意：数据是从新到旧排列的，所以需要从选中期号的索引开始取
+						let dataToUse;
+						if (processedData.length - selectedIdx >= 50) {
+							// 如果所选期号后有足够的数据(>=50期)，取50期
+							dataToUse = processedData.slice(selectedIdx, selectedIdx + 50);
+						} else {
+							// 如果所选期号后数据不足50期，就用所有可用的数据
+							dataToUse = processedData.slice(selectedIdx);
+						}
+
+						// 更新号码频率统计
+						updateNumberFrequencyStatsForTable(dataToUse);
+					} else {
+						isFrequencyLoading.value = true;
+						frequencyLoadingText.value = "获取数据失败，无法进行统计";
 					}
+				} else {
+					isFrequencyLoading.value = true;
+					frequencyLoadingText.value = "获取数据失败，请重试";
 				}
 			})
 			.catch((error) => {
@@ -998,6 +1068,8 @@
 	 * 更新号码频率总统计表格数据
 	 * 统计每个位置0-9的出现频率以及总和统计
 	 *
+	 * 修改：使用所选期号为中心的50期数据，而不是固定使用最新50期
+	 *
 	 * @param {Array} data 要统计的历史数据数组
 	 */
 	function updateNumberFrequencyStatsForTable(data) {
@@ -1008,13 +1080,14 @@
 			return;
 		}
 
-		// 确保使用最新50期数据
+		// 确保使用传入的数据进行统计
 		const dataToUse = data;
 
 		// 获取分析数据的第一期和最后一期的期号
 		const firstPeriod = dataToUse[dataToUse.length - 1]?.expect || "--";
 		const lastPeriod = dataToUse[0]?.expect || "--";
-		freqTotalPeriodRange.value = `最新${dataToUse.length}期: 从${firstPeriod}期到${lastPeriod}期`;
+		// 更新标题中显示的期号范围
+		freqTotalPeriodRange.value = `${dataToUse.length}期: 从${firstPeriod}期到${lastPeriod}期`;
 
 		// 初始化统计数组，分别统计百位、十位、个位各数字出现次数
 		const hundredCounts = Array(10).fill(0);
@@ -1310,8 +1383,15 @@
 	 */
 	onMounted(() => {
 		fetchAndAnalyze();
-		// 确保号码频率统计始终使用最新的50期数据
-		fetchLatestFrequencyData();
+	});
+
+	/**
+	 * 监听彩票类型变化
+	 */
+	watch(caipiaoid, () => {
+		// 当彩票类型变化时，重新获取数据并分析
+		selectedDrawPeriod.value = null; // 重置选中的期号
+		fetchAndAnalyze();
 	});
 </script>
 
