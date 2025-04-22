@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Your rule content
+
+- 使用中文进行对接
+- 编写代码时需要进行详细且通俗的注释

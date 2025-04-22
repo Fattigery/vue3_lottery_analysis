@@ -316,6 +316,20 @@
 		one: "", // 个位输入
 	});
 
+	/**
+	 * 控制是否在请求数据时多请求一条
+	 * true: 多请求一条数据
+	 * false: 精确请求指定数量
+	 */
+	const isPlusOne = ref(false);
+
+	/**
+	 * 切换是否多请求一条数据的状态
+	 */
+	function togglePlusOne() {
+		isPlusOne.value = !isPlusOne.value;
+	}
+
 	// ==================== Element Plus表格数据 ====================
 
 	/**
@@ -428,8 +442,7 @@
 	});
 
 	/**
-	 * 计算所选期号后还剩余多少条数据的提示文本
-	 * 用于提示用户是否有足够的数据进行分析
+	 * 计算所选期号后有多少条数据参与分析的提示文本
 	 * @returns {string} 提示文本
 	 */
 	const remainCountTip = computed(() => {
@@ -438,10 +451,14 @@
 		const idx = historyData.value.findIndex((item) => item.expect === selectedDrawPeriod.value);
 		if (idx < 0) return "";
 
-		const remainingData = historyData.value.length - idx - 1;
-		const isInsufficient = remainingData < limit.value;
+		// 分析的数据是从选中期号之后开始的数据
+		// 如果选择的是最新一期(idx=0)，则使用整个历史数据进行分析
+		const dataCount = idx === 0 ? historyData.value.length : historyData.value.length - idx - 1;
+		// 实际参与分析的数据数量是分析期数与可用数据量的较小值
+		const participatingData = Math.min(dataCount, limit.value);
+		const isInsufficient = participatingData < limit.value;
 
-		return `所选期号之后还剩余 ${remainingData} 条数据${isInsufficient ? "（不足）" : ""}`;
+		return `有 ${participatingData} 条数据参与分析${isInsufficient ? "（不足）" : ""}`;
 	});
 
 	/**
@@ -475,7 +492,7 @@
 		analysisLoadingText.value = "正在获取数据，请稍候...";
 
 		// 计算需要请求的数据量
-		let requestLimit = limit.value + 1;
+		let requestLimit = limit.value;
 
 		// 如果已经选择了期号且不是最新一期，计算期号差距
 		if (selectedDrawPeriod.value && historyData.value.length > 0) {
@@ -484,8 +501,8 @@
 			if (selectedIndex > 0) {
 				// 计算选中期号与最新期号的差距
 				const periodDiff = selectedIndex;
-				// 需要请求的数据量 = 分析期数 + 期号差距 + 1(额外缓冲)
-				requestLimit = limit.value + periodDiff + 1;
+				// 需要请求的数据量 = 分析期数 + 期号差距，不再额外加1
+				requestLimit = limit.value + periodDiff;
 				console.log(`选中期号与最新期相差${periodDiff}期，需要请求${requestLimit}期数据`);
 			}
 		}
@@ -570,7 +587,32 @@
 	 * 当用户选择不同的期号时触发分析
 	 */
 	function handleDrawPeriodChange() {
-		analyzeDataBySelectedPeriod();
+		// 验证数据有效性
+		if (!selectedDrawPeriod.value || historyData.value.length === 0) {
+			analyzeDataBySelectedPeriod();
+			return;
+		}
+
+		// 找到选中期号在历史数据中的索引
+		const idx = historyData.value.findIndex((item) => item.expect === selectedDrawPeriod.value);
+		if (idx === -1) {
+			analyzeDataBySelectedPeriod();
+			return;
+		}
+
+		// 检查是否有足够的数据进行分析
+		const availableData = historyData.value.length - idx - 1;
+
+		// 如果数据不足且不是最新一期，则需要重新请求数据
+		if (availableData < limit.value && idx > 0) {
+			// 数据不足，需要重新获取更多数据
+			isAnalysisLoading.value = true;
+			analysisLoadingText.value = `所选期号后的数据不足${limit.value}期，正在获取更多数据...`;
+			fetchAndAnalyze(); // 重新获取数据
+		} else {
+			// 数据足够或者是最新一期，直接分析
+			analyzeDataBySelectedPeriod();
+		}
 	}
 
 	/**
@@ -591,23 +633,27 @@
 		// 找到选中期号在历史数据中的索引
 		const idx = historyData.value.findIndex((item) => item.expect === selectedDrawPeriod.value);
 		let periodNum = limit.value;
-		let analyzeArr = [];
 		let selectedNumbers = [];
 
 		if (idx !== -1) {
 			// 找到了选中的期号
 			// 检查是否有足够的数据进行分析
 			const availableData = historyData.value.length - idx - 1;
-			if (availableData < periodNum) {
-				// 数据不足，需要重新获取更多数据
+
+			// 如果数据不足但仍有数据，使用可用数据进行分析
+			if (availableData < periodNum && availableData > 0) {
+				// 使用可用的数据量
+				periodNum = availableData;
+				// 只在直接调用analyzeDataBySelectedPeriod时显示提示，避免重复提示
+				if (!isAnalysisLoading.value) {
+					ElMessage.warning(`所选期号后的数据不足${limit.value}期，将使用可用的${availableData}期数据进行分析`);
+				}
+			} else if (availableData <= 0) {
+				// 如果没有可用数据，则显示提示信息
 				isAnalysisLoading.value = true;
-				analysisLoadingText.value = `所选期号后的数据不足${periodNum}期，正在获取更多数据...`;
-				fetchAndAnalyze(); // 重新获取数据
+				analysisLoadingText.value = "所选期号后没有数据，请选择其他期号";
 				return;
 			}
-
-			// 获取分析数据数组（选中期号后的数据）
-			analyzeArr = historyData.value.slice(idx + 1, idx + 1 + periodNum);
 
 			// 获取当前选中期号的开奖号码
 			selectedNumbers = historyData.value[idx].opencode
@@ -617,7 +663,6 @@
 				: [];
 		} else {
 			// 没找到选中的期号，使用最新期号
-			analyzeArr = historyData.value.slice(0, periodNum);
 			selectedNumbers = historyData.value[0].opencode
 				? historyData.value[0].opencode.split(",")
 				: historyData.value[0].number
@@ -625,7 +670,8 @@
 				: [];
 		}
 
-		// 使用选中的数据进行分析
+		// 使用选中的期号及其开奖号码进行分析
+		// 注意：analyzeData现在会负责选择合适的历史数据
 		analyzeData(selectedNumbers, historyData.value, periodNum);
 	}
 
@@ -653,9 +699,22 @@
 		positionAnalysis.value = [];
 		totalStats.value = [];
 
+		// 找到当前选中期号的索引
+		const idx = historyData.findIndex((item) => item.expect === selectedDrawPeriod.value);
+		if (idx === -1) {
+			isAnalysisLoading.value = true;
+			analysisLoadingText.value = "未找到所选期号";
+			return;
+		}
+
+		// 获取用于分析的历史数据（不包含当前选中期号）
+		// 无论选择哪个期号（包括最新期号），都只使用该期号之后的数据进行分析
+		// 注意：historyData是按期号倒序排列的（最新的在前）
+		const dataToAnalyze = historyData.slice(idx + 1);
+
 		// 获取分析数据的第一期和最后一期的期号
-		const firstPeriod = historyData[historyData.length - 1]?.expect || "--";
-		const lastPeriod = historyData[0]?.expect || "--";
+		const firstPeriod = dataToAnalyze[dataToAnalyze.length - 1]?.expect || "--";
+		const lastPeriod = dataToAnalyze[0]?.expect || "--";
 		const periodRange = `从${firstPeriod}期到${lastPeriod}期`;
 		totalStatsRange.value = periodRange;
 
@@ -665,7 +724,7 @@
 
 		// 分析每个位置(百位、十位、个位)
 		for (let i = 0; i < 3; i++) {
-			const positionData = analyzePositionForTable(i, currentNumbers[i], historyData, allPositionCounts);
+			const positionData = analyzePositionForTable(i, currentNumbers[i], dataToAnalyze, allPositionCounts);
 			positionAnalysis.value.push(positionData);
 		}
 
@@ -688,9 +747,12 @@
 	 * 3. 生成位置频率统计
 	 * 4. 整合分析结果
 	 *
+	 * 注意: 传入的data不包含当前选中的期号，只包含之前的历史数据
+	 * 但当前选中的期号作为"下一期"参与统计
+	 *
 	 * @param {number} position 位置索引(0:百位, 1:十位, 2:个位)
 	 * @param {number} digit 要分析的数字(0-9)
-	 * @param {Array} data 历史数据数组
+	 * @param {Array} data 历史数据数组（不包含当前选中期号）
 	 * @param {Array} allPositionCounts 用于累计各数字出现次数的数组
 	 * @returns {Object} 包含分析结果的对象
 	 */
@@ -705,9 +767,17 @@
 		const matchData = [];
 		const nextDigitCounts = Array(10).fill(0);
 
+		// 获取当前选中期号的开奖号码（用于计算最后一期的下一期）
+		const selectedDraw = historyData.value.find((item) => item.expect === selectedDrawPeriod.value);
+		const selectedNumbers = selectedDraw?.opencode
+			? selectedDraw.opencode.split(",").map(Number)
+			: selectedDraw?.number
+			? selectedDraw.number.split(/\s+/).map(Number)
+			: [];
+
 		// 查找历史数据中包含指定数字的期数
 		for (let i = 0; i < data.length; i++) {
-			// 包含所有期数，包括最新一期
+			// 当前期数据
 			const currentDraw = data[i];
 
 			// 获取当前期号码
@@ -723,44 +793,47 @@
 				continue;
 			}
 
-			// 如果当前号码中包含指定数字
-			if (currentNumbers.includes(String(digit))) {
-				// 获取下一期的号码，如果i=0是最新一期，则没有下一期
-				if (i > 0) {
-					const nextDraw = data[i - 1]; // 数据是倒序排列的，所以下一期是i-1
+			// 检查当前位置的号码是否等于我们要分析的数字
+			if (parseInt(currentNumbers[position]) === digit) {
+				// 获取下一期的号码
+				let nextDraw, nextNumbers;
 
-					// 获取下一期号码
-					let nextNumbers = [];
-					if (nextDraw.opencode) {
-						nextNumbers = nextDraw.opencode.split(",");
-					} else if (nextDraw.number) {
-						nextNumbers = nextDraw.number.split(/\s+/);
-					}
-
-					// 如果无法解析号码，跳过此期
-					if (nextNumbers.length < 3) {
-						continue;
-					}
-
-					// 添加到表格数据
-					matchData.push({
-						expect: currentDraw.expect,
-						opencode: currentDraw.opencode,
-						nextOpencode: nextDraw.opencode,
-					});
-
-					// 统计下一期号码出现次数（不区分位置）
-					nextNumbers.forEach((nextDigit) => {
-						nextDigitCounts[parseInt(nextDigit)]++;
-					});
+				// 如果当前期是历史数据的第一项（最新的历史数据），
+				// 且当前选中的期号是最新一期（即索引为0），
+				// 则当前选中的期号是下一期
+				if (i === 0 && selectedDrawPeriod.value === historyData.value[0].expect) {
+					nextDraw = {
+						expect: selectedDrawPeriod.value,
+						opencode: selectedNumbers.join(","),
+					};
+					nextNumbers = selectedNumbers;
+				} else if (i > 0) {
+					// 否则，下一期是历史数据中的前一项
+					nextDraw = data[i - 1];
+					nextNumbers = nextDraw.opencode
+						? nextDraw.opencode.split(",").map(Number)
+						: nextDraw.number
+						? nextDraw.number.split(/\s+/).map(Number)
+						: [];
 				} else {
-					// 这是最新一期，也需要添加到表格数据中
-					matchData.push({
-						expect: currentDraw.expect,
-						opencode: currentDraw.opencode,
-						nextOpencode: "待开奖",
-					});
+					// 没有下一期数据
+					nextDraw = { expect: "待开奖", opencode: "待开奖" };
+					nextNumbers = [];
 				}
+
+				// 添加到表格数据
+				matchData.push({
+					expect: currentDraw.expect,
+					opencode: currentDraw.opencode || currentDraw.number,
+					nextOpencode: nextDraw.opencode || nextDraw.number || "待开奖",
+				});
+
+				// 统计下一期号码出现次数
+				nextNumbers.forEach((nextDigit) => {
+					if (!isNaN(nextDigit)) {
+						nextDigitCounts[nextDigit]++;
+					}
+				});
 			}
 		}
 
@@ -1658,6 +1731,20 @@
 		font-size: 18px;
 		font-weight: bold;
 	}*/
+
+	.period-control {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		width: 100%;
+	}
+
+	.plus-one-btn {
+		flex-shrink: 0;
+		padding: 0 10px;
+		height: 40px;
+		font-weight: 600;
+	}
 </style>
 
 <!-- 使用全局样式覆盖Element Plus组件样式 -->
