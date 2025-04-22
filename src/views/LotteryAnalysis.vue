@@ -1210,22 +1210,46 @@
 
 		// 显示结果
 		let resultHTML = `
-			<div class="analysis-section">
-				<h3>复式号码中奖统计</h3>
-				<p>百位号码: ${hundredNumbers.length > 0 ? hundredNumbers.join(",") : "未指定"}</p>
-				<p>十位号码: ${tenNumbers.length > 0 ? tenNumbers.join(",") : "未指定"}</p>
-				<p>个位号码: ${oneNumbers.length > 0 ? oneNumbers.join(",") : "未指定"}</p>
-				<p>总期数: ${totalCount}期</p>
-				<p>中奖次数: ${winCount}期</p>
-				<p>中奖率: ${((winCount / totalCount) * 100).toFixed(2)}%</p>
-			</div>`;
+			<div class="complex-result">
+				<h3 class="complex-title">复式号码中奖统计</h3>
+
+				<div class="complex-stats-grid">
+					<div class="complex-grid-item">
+						<div class="grid-item-label">百位号码:</div>
+						<div class="grid-item-value">${hundredNumbers.length > 0 ? hundredNumbers.join(",") : "未指定"}</div>
+					</div>
+					<div class="complex-grid-item">
+						<div class="grid-item-label">十位号码:</div>
+						<div class="grid-item-value">${tenNumbers.length > 0 ? tenNumbers.join(",") : "未指定"}</div>
+					</div>
+					<div class="complex-grid-item">
+						<div class="grid-item-label">个位号码:</div>
+						<div class="grid-item-value">${oneNumbers.length > 0 ? oneNumbers.join(",") : "未指定"}</div>
+					</div>
+				</div>
+
+				<div class="complex-stats-grid">
+					<div class="complex-grid-item">
+						<div class="grid-item-label">总期数:</div>
+						<div class="grid-item-value">${totalCount}期</div>
+					</div>
+					<div class="complex-grid-item">
+						<div class="grid-item-label">中奖次数:</div>
+						<div class="grid-item-value highlight">${winCount}期</div>
+					</div>
+					<div class="complex-grid-item">
+						<div class="grid-item-label">中奖率:</div>
+						<div class="grid-item-value highlight">${((winCount / totalCount) * 100).toFixed(2)}%</div>
+					</div>
+				</div>
+		`;
 
 		// 如果有中奖记录，显示详情
 		if (winDetails.length > 0) {
 			resultHTML += `
-				<div class="analysis-section">
-					<h3>中奖详情</h3>
-					<table>
+				<div class="complex-details">
+					<h3 class="complex-title">中奖详情</h3>
+					<table class="win-details-table">
 						<thead>
 							<tr>
 								<th>期号</th>
@@ -1247,9 +1271,10 @@
 				</table>
 			</div>`;
 		} else {
-			resultHTML += `<div class="analysis-section"><p>没有找到中奖记录</p></div>`;
+			resultHTML += `<div class="complex-no-wins"><p>没有找到中奖记录</p></div>`;
 		}
 
+		resultHTML += `</div>`;
 		complexResultHTML.value = resultHTML;
 	}
 
@@ -1603,29 +1628,34 @@
 	.complex-inputs {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 15px;
-		margin-bottom: 20px;
+		gap: 24px;
+		margin-bottom: 30px;
+		background-color: #f9f9f9;
+		padding: 24px;
+		border-radius: 8px;
 	}
 
 	.input-group {
 		flex: 1;
-		min-width: 180px;
+		min-width: 200px;
 	}
 
 	.input-group label {
 		display: block;
-		margin-bottom: 8px;
+		margin-bottom: 12px;
 		font-weight: 600;
 		color: #333;
+		font-size: 16px;
 	}
 
 	.complex-input {
 		width: 100%;
 	}
 
-	:deep(.complex-input .el-input__wrapper) {
-		border-radius: 6px;
-		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+	.complex-input :deep(.el-input__wrapper) {
+		padding: 0 15px;
+		height: 44px;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 	}
 
 	.btn-container {
@@ -1636,8 +1666,9 @@
 
 	.complex-btn {
 		width: 100%;
-		height: 40px;
+		height: 44px;
 		font-weight: 600;
+		font-size: 16px;
 		border-radius: 6px;
 		box-shadow: 0 2px 4px rgba(231, 76, 60, 0.2);
 	}
@@ -1800,6 +1831,110 @@
 		padding: 0 10px;
 		height: 40px;
 		font-weight: 600;
+	}
+
+	/* 复式号码分析结果样式 */
+	:deep(.complex-result) {
+		margin-top: 30px;
+		background-color: #f8f9fa;
+		border-radius: 10px;
+		padding: 25px;
+		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+	}
+
+	:deep(.complex-title) {
+		margin: 0 0 20px 0;
+		padding-bottom: 15px;
+		font-size: 18px;
+		border-bottom: 1px solid #e0e0e0;
+		color: #333;
+		font-weight: 600;
+		text-align: left;
+	}
+
+	:deep(.complex-stats-grid) {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 20px;
+		margin-bottom: 30px;
+	}
+
+	:deep(.complex-grid-item) {
+		background-color: white;
+		padding: 15px;
+		border-radius: 8px;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+	}
+
+	:deep(.grid-item-label) {
+		font-weight: 500;
+		color: #666;
+		margin-bottom: 8px;
+		font-size: 14px;
+	}
+
+	:deep(.grid-item-value) {
+		font-size: 18px;
+		font-weight: 500;
+		color: #333;
+	}
+
+	:deep(.grid-item-value.highlight) {
+		color: #e74c3c;
+		font-weight: bold;
+	}
+
+	:deep(.complex-details) {
+		margin-top: 30px;
+	}
+
+	:deep(.win-details-table) {
+		width: 100%;
+		border-collapse: separate;
+		border-spacing: 0;
+		border-radius: 8px;
+		overflow: hidden;
+		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+	}
+
+	:deep(.win-details-table th) {
+		background-color: #f2f2f2;
+		padding: 15px;
+		text-align: center;
+		font-weight: 600;
+		color: #333;
+		border-bottom: 1px solid #e0e0e0;
+	}
+
+	:deep(.win-details-table td) {
+		padding: 15px;
+		text-align: center;
+		border-bottom: 1px solid #e0e0e0;
+	}
+
+	:deep(.win-details-table tr:last-child td) {
+		border-bottom: none;
+	}
+
+	:deep(.win-details-table tr:nth-child(even)) {
+		background-color: #f9f9f9;
+	}
+
+	:deep(.complex-no-wins) {
+		text-align: center;
+		padding: 30px;
+		background-color: #fff;
+		border-radius: 8px;
+		color: #666;
+		font-style: italic;
+		margin-top: 20px;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+	}
+
+	@media (max-width: 768px) {
+		:deep(.complex-stats-grid) {
+			grid-template-columns: 1fr;
+		}
 	}
 </style>
 
