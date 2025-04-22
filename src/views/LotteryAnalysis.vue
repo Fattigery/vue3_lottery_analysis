@@ -733,13 +733,12 @@
 	/**
 	 * 分析特定位置上的数字在历史数据中的情况
 	 * 主要功能:
-	 * 1. 查找历史数据中包含指定数字的期数
+	 * 1. 查找历史数据中包含指定数字的期数（不限位置）
 	 * 2. 统计下一期号码出现的次数
 	 * 3. 生成位置频率统计
 	 * 4. 整合分析结果
 	 *
-	 * 注意: 传入的data不包含当前选中的期号，只包含之前的历史数据
-	 * 修改: 所选期号不参与历史数据的查找，但其开奖号码要参与统计
+	 * 修改: 不再按位置查找，只要开奖号码中包含指定数字就算找到
 	 *
 	 * @param {number} position 位置索引(0:百位, 1:十位, 2:个位)
 	 * @param {number} digit 要分析的数字(0-9)
@@ -762,7 +761,7 @@
 		// 获取当前选中期号的开奖号码用于统计
 		const currentNumbers = selectedNumbers.map(Number);
 
-		// 查找历史数据中包含指定数字的期数
+		// 查找历史数据中包含指定数字的期数（不按位置查找）
 		for (let i = 0; i < data.length; i++) {
 			// 当前期数据
 			const currentDraw = data[i];
@@ -770,9 +769,9 @@
 			// 获取当前期号码
 			let currentNumbers = [];
 			if (currentDraw.opencode) {
-				currentNumbers = currentDraw.opencode.split(",");
+				currentNumbers = currentDraw.opencode.split(",").map((num) => parseInt(num));
 			} else if (currentDraw.number) {
-				currentNumbers = currentDraw.number.split(/\s+/);
+				currentNumbers = currentDraw.number.split(/\s+/).map((num) => parseInt(num));
 			}
 
 			// 如果无法解析号码，跳过此期
@@ -780,8 +779,8 @@
 				continue;
 			}
 
-			// 检查当前位置的号码是否等于我们要分析的数字
-			if (parseInt(currentNumbers[position]) === digit) {
+			// 修改：检查整个开奖号码中是否包含指定数字，不限位置
+			if (currentNumbers.includes(digit)) {
 				// 获取下一期的号码
 				let nextDraw, nextNumbers;
 
@@ -796,7 +795,6 @@
 						: [];
 				} else {
 					// 如果是历史数据中的第一条记录，则下一期是所选期号
-					// 重要修改：所选期号不参与历史数据的查找，但其开奖号码参与统计
 					nextDraw = { expect: selectedDrawPeriod.value, opencode: selectedNumbers.join(",") };
 					nextNumbers = selectedNumbers.map(Number);
 				}
@@ -830,11 +828,11 @@
 		// 这些数据是从所选期号开始的50期数据
 		const positionStats = calculatePositionStats(position, latestFrequencyData.value);
 
-		// 返回完整的分析结果
+		// 修改标题和描述以反映新的查找方式
 		return {
 			positionName: positionNames[position],
 			title: `${positionNames[position]}分析 (当前号码: ${digit})`,
-			description: `查找历史数据中包含 ${digit} 的期数，并统计下一期出现的号码：`,
+			description: `查找历史数据中任意位置包含 ${digit} 的期数，并统计下一期出现的号码：`,
 			matchData,
 			digitStatsData: [digitStatsRow],
 			periodRange,
