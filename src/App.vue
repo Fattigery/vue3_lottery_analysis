@@ -37,8 +37,8 @@
 				class="main-nav">
 				<el-menu-item index="/">首页</el-menu-item>
 				<el-menu-item index="/number-search">号码查询</el-menu-item>
-				<el-menu-item index="/lottery-analysis">彩票分析</el-menu-item>
-				<el-menu-item index="/position-next-analysis">位置号码分析</el-menu-item>
+				<el-menu-item index="/lottery-analysis">号码分析</el-menu-item>
+				<el-menu-item index="/position-next-analysis">下一期号码预测</el-menu-item>
 			</el-menu>
 		</div>
 	</header>

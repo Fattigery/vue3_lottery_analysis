@@ -239,7 +239,7 @@
 	 * 分析期数 - 决定分析往前多少期的数据
 	 * 可选值: 7, 10, 14, 20, 30, 40, 50
 	 */
-	const limit = ref(7); // 默认获取7期数据
+	const limit = ref(30); // 默认获取7期数据
 
 	/**
 	 * 存储所有获取到的历史开奖数据
@@ -761,6 +761,21 @@
 		// 获取当前选中期号的开奖号码用于统计
 		const currentNumbers = selectedNumbers.map(Number);
 
+		// 创建期号到数据的映射，以便快速查找
+		const periodMap = {};
+		data.forEach((item) => {
+			// 将期号作为键，对应的数据作为值
+			periodMap[item.expect] = item;
+		});
+
+		// 添加当前选择的期号到映射中（用于处理边界情况）
+		if (selectedDrawPeriod.value) {
+			periodMap[selectedDrawPeriod.value] = {
+				expect: selectedDrawPeriod.value,
+				opencode: selectedNumbers.join(","),
+			};
+		}
+
 		// 查找历史数据中包含指定数字的期数（不按位置查找）
 		for (let i = 0; i < data.length; i++) {
 			// 当前期数据
@@ -781,22 +796,24 @@
 
 			// 修改：检查整个开奖号码中是否包含指定数字，不限位置
 			if (currentNumbers.includes(digit)) {
-				// 获取下一期的号码
-				let nextDraw, nextNumbers;
+				// 获取下一期的号码 - 通过期号计算
+				const currentPeriod = parseInt(currentDraw.expect);
+				const nextPeriod = (currentPeriod + 1).toString();
 
-				// 判断是否有下一期数据
-				if (i > 0) {
-					// 下一期是历史数据中的前一项
-					nextDraw = data[i - 1];
-					nextNumbers = nextDraw.opencode
-						? nextDraw.opencode.split(",").map(Number)
-						: nextDraw.number
-						? nextDraw.number.split(/\s+/).map(Number)
-						: [];
+				// 查找下一期数据
+				const nextDraw = periodMap[nextPeriod];
+
+				// 如果找不到下一期数据，跳过此期
+				if (!nextDraw) continue;
+
+				let nextNumbers = [];
+				if (nextDraw.opencode) {
+					nextNumbers = nextDraw.opencode.split(",").map(Number);
+				} else if (nextDraw.number) {
+					nextNumbers = nextDraw.number.split(/\s+/).map(Number);
 				} else {
-					// 如果是历史数据中的第一条记录，则下一期是所选期号
-					nextDraw = { expect: selectedDrawPeriod.value, opencode: selectedNumbers.join(",") };
-					nextNumbers = selectedNumbers.map(Number);
+					// 如果找不到开奖号码，可能是待开奖
+					nextNumbers = [];
 				}
 
 				// 添加到表格数据
