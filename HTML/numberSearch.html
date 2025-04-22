@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>000-999号码查找器</title>
+		<style>
+			body {
+				font-family: Arial, sans-serif;
+				max-width: 800px;
+				margin: 0 auto;
+				padding: 10px;
+				background-color: #f5f5f5;
+			}
+			.container {
+				background-color: white;
+				padding: 15px;
+				border-radius: 8px;
+				box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+			}
+			h1 {
+				color: #333;
+				text-align: center;
+				font-size: 24px;
+				margin: 10px 0;
+			}
+			.input-group {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 8px;
+				margin-bottom: 15px;
+				justify-content: center;
+			}
+			.input-group input {
+				padding: 8px;
+				border: 1px solid #ddd;
+				border-radius: 4px;
+				font-size: 14px;
+				width: 100px;
+			}
+			.numbers-container {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+				gap: 10px;
+				margin-top: 15px;
+				min-height: 0;
+				overflow: auto;
+			}
+			.number {
+				padding: 8px 4px;
+				text-align: center;
+				background-color: #f0f0f0;
+				border-radius: 4px;
+				font-family: monospace;
+				font-size: 14px;
+				min-width: 50px;
+				box-sizing: border-box;
+				white-space: nowrap;
+				overflow: hidden;
+			}
+			.number.highlight {
+				background-color: #ffd700;
+				font-weight: bold;
+			}
+			button {
+				background-color: #4caf50;
+				color: white;
+				border: none;
+				padding: 8px 16px;
+				border-radius: 4px;
+				cursor: pointer;
+				font-size: 14px;
+				display: inline-block;
+			}
+			button:hover {
+				background-color: #45a049;
+			}
+
+			/* 移动端适配 */
+			@media screen and (max-width: 480px) {
+				body {
+					padding: 5px;
+				}
+				.container {
+					padding: 10px;
+				}
+				h1 {
+					font-size: 20px;
+				}
+				.input-group {
+					flex-direction: column;
+					align-items: stretch;
+				}
+				.input-group input {
+					width: 30%;
+					padding: 10px;
+				}
+				.numbers-container {
+					grid-template-columns: repeat(auto-fit, minmax(45px, 1fr));
+					gap: 6px;
+				}
+				.number {
+					padding: 6px 3px;
+					font-size: 13px;
+					min-width: 40px;
+				}
+				button {
+					width: 30%;
+					margin-top: 5px;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<h1>000-999号码查找器</h1>
+			<div class="input-group">
+				<input type="text" id="searchInput1" placeholder="输入第一个数字" maxlength="3" />
+				<input type="text" id="searchInput2" placeholder="输入第二个数字" maxlength="3" />
+				<button id="searchBtn">查找</button>
+			</div>
+			<div id="numbersOutput" class="numbers-container"></div>
+			<div class="input-group" style="margin-top: 15px; margin-bottom: 20px">
+				<textarea type="text" id="resultInput" placeholder="匹配的号码" readonly style="height: 300px"></textarea>
+			</div>
+		</div>
+
+		<script>
+			// 生成号码的函数
+			function generateNumbers() {
+				const outputContainer = document.getElementById("numbersOutput");
+				outputContainer.innerHTML = "";
+
+				let numbers = [];
+
+				// 生成从000到999的号码
+				for (let i = 0; i <= 999; i++) {
+					// 将数字转换为三位数格式（前面补0）
+					const formattedNumber = i.toString().padStart(3, "0");
+					numbers.push(formattedNumber);
+
+					// 创建显示号码的元素
+					const numberElement = document.createElement("div");
+					numberElement.className = "number";
+					numberElement.textContent = formattedNumber;
+
+					// 添加到容器中
+					outputContainer.appendChild(numberElement);
+				}
+
+				return numbers;
+			}
+
+			// 搜索并高亮显示匹配的数字
+			function searchNumbers() {
+				const input1 = document.getElementById("searchInput1").value.trim();
+				const input2 = document.getElementById("searchInput2").value.trim();
+				const numberElements = document.querySelectorAll(".number");
+				const matchedNumbers = [];
+
+				// 移除所有高亮
+				numberElements.forEach((element) => {
+					element.classList.remove("highlight");
+				});
+
+				// 如果两个输入框都为空，直接返回
+				if (!input1 && !input2) return;
+
+				// 遍历所有数字元素
+				numberElements.forEach((element) => {
+					const number = element.textContent;
+					const matchInput1 = !input1 || number.includes(input1);
+					const matchInput2 = !input2 || number.includes(input2);
+
+					// 如果匹配任一输入的数字
+					if (matchInput1 && matchInput2) {
+						element.classList.add("highlight");
+						matchedNumbers.push(number);
+					}
+				});
+
+				// 在输入框中显示匹配的数字
+				document.getElementById("resultInput").value = matchedNumbers.join(", ");
+			}
+
+			// 添加事件监听器
+			document.getElementById("searchBtn").addEventListener("click", searchNumbers);
+
+			// 初始生成数字
+			generateNumbers();
+		</script>
+	</body>
+</html>
