@@ -14,51 +14,21 @@
 		<div class="control-panel">
 			<div class="control-item">
 				<label>彩票类型:</label>
-				<el-select
-					v-model="caipiaoid"
-					placeholder="选择彩票类型"
-					class="custom-select"
-					popper-class="custom-dropdown"
-					align="center"
-					:popper-options="{
-						modifiers: [
-							{
-								name: 'offset',
-								options: {
-									offset: [0, 10],
-								},
-							},
-						],
-					}">
-					<el-option :value="16" label="排列三" class="text-center"></el-option>
-					<el-option :value="12" label="福彩3D" class="text-center"></el-option>
+				<el-select v-model="caipiaoid" placeholder="选择彩票类型" class="select-control">
+					<el-option :value="16" label="排列三"></el-option>
+					<el-option :value="12" label="福彩3D"></el-option>
 				</el-select>
 			</div>
 			<div class="control-item">
 				<label>分析期数:</label>
-				<el-select
-					v-model="limit"
-					placeholder="选择分析期数"
-					class="custom-select"
-					popper-class="custom-dropdown"
-					align="center"
-					:popper-options="{
-						modifiers: [
-							{
-								name: 'offset',
-								options: {
-									offset: [0, 10],
-								},
-							},
-						],
-					}">
-					<el-option :value="7" label="往前7期" class="text-center"></el-option>
-					<el-option :value="10" label="往前10期" class="text-center"></el-option>
-					<el-option :value="14" label="往前14期" class="text-center"></el-option>
-					<el-option :value="20" label="往前20期" class="text-center"></el-option>
-					<el-option :value="30" label="往前30期" class="text-center"></el-option>
-					<el-option :value="40" label="往前40期" class="text-center"></el-option>
-					<el-option :value="50" label="往前50期" class="text-center"></el-option>
+				<el-select v-model="limit" placeholder="选择分析期数" class="select-control">
+					<el-option :value="7" label="往前7期"></el-option>
+					<el-option :value="10" label="往前10期"></el-option>
+					<el-option :value="14" label="往前14期"></el-option>
+					<el-option :value="20" label="往前20期"></el-option>
+					<el-option :value="30" label="往前30期"></el-option>
+					<el-option :value="40" label="往前40期"></el-option>
+					<el-option :value="50" label="往前50期"></el-option>
 				</el-select>
 			</div>
 			<el-button type="primary" @click="fetchAndAnalyze" class="analyze-btn">分析</el-button>
@@ -72,25 +42,8 @@
 					v-model="selectedDrawPeriod"
 					placeholder="选择期号"
 					@change="handleDrawPeriodChange"
-					class="custom-select period-select"
-					popper-class="custom-dropdown"
-					align="center"
-					:popper-options="{
-						modifiers: [
-							{
-								name: 'offset',
-								options: {
-									offset: [0, 10],
-								},
-							},
-						],
-					}">
-					<el-option
-						v-for="item in historyData"
-						:key="item.expect"
-						:label="item.expect"
-						:value="item.expect"
-						class="text-center">
+					class="period-select">
+					<el-option v-for="item in historyData" :key="item.expect" :label="item.expect" :value="item.expect">
 					</el-option>
 				</el-select>
 				<div class="period-tip" :class="{ insufficient: isDataInsufficient }">
@@ -177,8 +130,8 @@
 					</table>
 				</div>
 
-				<!-- 位置频率统计表格 -->
-				<h3>{{ position.positionName }}号码频率统计 ({{ position.freqPeriodRange }})</h3>
+				<!-- 单位置频率统计表格 -->
+				<h3>{{ position.positionName }}号码频率统计 ({{ freqTotalPeriodRange }})</h3>
 				<div class="stats-table-container">
 					<table class="stats-table">
 						<thead>
@@ -191,13 +144,15 @@
 								<td
 									v-for="i in 10"
 									:key="`freq-cell-${i - 1}`"
-									:class="{ 'zero-count-cell': position.freqStatsData[0][`digit${i - 1}`] === 0 }">
-									{{ position.freqStatsData[0][`digit${i - 1}`] }}
+									:class="{ 'zero-count-cell': getPositionFrequencyCount(index, i - 1) === 0 }">
+									{{ getPositionFrequencyCount(index, i - 1) }}
 								</td>
 							</tr>
 						</tbody>
 					</table>
 				</div>
+
+				<!-- 位置频率统计表格已移除 -->
 			</div>
 
 			<!-- 三个位置总和统计 -->
@@ -1393,15 +1348,34 @@
 		selectedDrawPeriod.value = null; // 重置选中的期号
 		fetchAndAnalyze();
 	});
+
+	// ==================== 频率统计相关方法 ====================
+
+	/**
+	 * 获取指定位置的号码频率统计数据
+	 *
+	 * @param {number} positionIndex 位置索引 (0:百位, 1:十位, 2:个位)
+	 * @param {number} digit 要查询的数字 (0-9)
+	 * @returns {number} 指定位置指定数字的出现次数
+	 */
+	function getPositionFrequencyCount(positionIndex, digit) {
+		// 确保frequencyStats存在且有数据
+		if (!frequencyStats.value || frequencyStats.value.length <= positionIndex) {
+			return 0;
+		}
+
+		// 获取该位置的频率统计数据
+		const posData = frequencyStats.value[positionIndex];
+		if (!posData) {
+			return 0;
+		}
+
+		// 返回指定数字的频率统计数
+		return posData[`digit${digit}`] || 0;
+	}
 </script>
 
 <style scoped>
-	* {
-		box-sizing: border-box;
-		margin: 0;
-		padding: 0;
-	}
-
 	.container {
 		max-width: 1000px;
 		margin: 0 auto;
@@ -1669,14 +1643,16 @@
 	}
 
 	/* 选择框样式 */
-	.custom-select {
+	.select-control {
 		width: 100%;
 		max-width: 180px;
 	}
 
-	/* 下拉框样式 */
-	.custom-dropdown {
-		min-width: 180px;
+	/* 期号选择框 */
+	.period-select {
+		width: auto;
+		min-width: 120px;
+		max-width: 150px;
 	}
 
 	/* 文本居中类 */
@@ -1686,15 +1662,15 @@
 
 	/* 下拉选项样式 - 仅保留必要的居中样式 */
 	:deep(.el-select-dropdown__item) {
-		text-align: center;
-		display: flex;
-		justify-content: center;
-		padding: 0 32px 0 20px !important;
+		/* text-align: center; */
+		/* display: flex; */
+		/* justify-content: center; */
+		/* padding: 0 32px 0 20px !important; */
 	}
 
 	/* 选项内容居中 */
 	:deep(.el-select-dropdown__item span) {
-		width: 100%;
+		/* width: 100%; */
 		/* text-align: center; */
 	}
 
@@ -1829,47 +1805,6 @@
 
 <!-- 使用全局样式覆盖Element Plus组件样式 -->
 <style>
-	/* 下拉选项 */
-	.el-select-dropdown__item {
-		padding: 0 !important;
-		display: flex !important;
-		justify-content: center !important;
-		align-items: center !important;
-		text-align: center !important;
-		height: 34px !important;
-	}
-
-	/* 选项内容居中 */
-	.el-select-dropdown__item span,
-	.el-select-dropdown__item div {
-		width: 100% !important;
-		text-align: center !important;
-		display: block !important;
-		padding: 0 !important;
-	}
-
-	/* 确保popper的容器不影响选项居中 */
-	.el-popper.is-customized {
-		width: auto !important;
-		min-width: 180px !important;
-	}
-
-	/* 确保下拉菜单内容居中 */
-	.el-select-dropdown {
-		text-align: center !important;
-	}
-
-	.el-select-dropdown__wrap {
-		text-align: center !important;
-	}
-
-	/* 让选中项也居中 */
-	.el-select-dropdown__item.selected {
-		color: var(--el-color-primary) !important;
-		font-weight: bold !important;
-		text-align: center !important;
-	}
-
 	/* 零出现次数的单元格样式 */
 	.zero-count-cell {
 		background-color: #ff0000 !important;
@@ -2031,40 +1966,6 @@
 	td.zero-count {
 		background-color: #ff0000 !important;
 		color: #ffffff !important;
-	}
-
-	.el-popper {
-		text-align: center !important;
-		overflow: hidden !important;
-	}
-
-	/* 加强确保下拉选项文本居中 */
-	.el-select-dropdown__item * {
-		text-align: center !important;
-		width: 100% !important;
-		margin: 0 auto !important;
-	}
-
-	/* 特定针对custom-dropdown的样式 */
-	.custom-dropdown .el-select-dropdown__list .el-select-dropdown__item span {
-		text-align: center !important;
-		display: block !important;
-		width: 100% !important;
-		padding: 0 !important;
-	}
-
-	/* 优化下拉菜单弹出框 */
-	.custom-dropdown.el-popper {
-		min-width: 120px !important;
-		width: fit-content !important;
-		padding: 5px 0 !important;
-	}
-
-	/* 确保下拉菜单列表正确显示 */
-	.el-select-dropdown__list {
-		padding: 0 !important;
-		margin: 0 !important;
-		width: 100% !important;
 	}
 
 	/* 对话框位置与大小控制 */

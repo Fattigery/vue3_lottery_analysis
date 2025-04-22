@@ -1,22 +1,73 @@
 <script setup>
-	import { RouterLink, RouterView } from "vue-router";
+	import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
+	import { ref, computed, watch, onMounted } from "vue";
 	import NumberSearch from "./views/NumberSearch.vue";
+
+	const route = useRoute();
+	const router = useRouter();
+
+	// 根据当前路由路径设置活动菜单项
+	const activeIndex = ref("/");
+
+	// 监听路由变化，更新活动菜单项
+	watch(
+		() => route.path,
+		(newPath) => {
+			activeIndex.value = newPath;
+		},
+		{ immediate: true }
+	);
+
+	// 初始化时设置活动菜单项
+	onMounted(() => {
+		activeIndex.value = route.path;
+	});
 </script>
 
 <template>
 	<header>
-		<div class="wrapper">
-			<nav>
-				<RouterLink to="/">Home</RouterLink>
-				<RouterLink to="/number-search">Number Search</RouterLink>
-				<RouterLink to="/lottery-analysis">lottery-analysis</RouterLink>
-				<!-- <RouterLink to="/">Home</RouterLink>
-				<RouterLink to="/about">About</RouterLink> -->
-			</nav>
+		<div class="header-container">
+			<el-menu
+				:default-active="activeIndex"
+				mode="horizontal"
+				router
+				background-color="#545c64"
+				text-color="#fff"
+				active-text-color="#ffd04b"
+				class="main-nav">
+				<el-menu-item index="/">首页</el-menu-item>
+				<el-menu-item index="/number-search">号码查询</el-menu-item>
+				<el-menu-item index="/lottery-analysis">彩票分析</el-menu-item>
+			</el-menu>
 		</div>
 	</header>
 
-	<RouterView />
+	<div class="content-container">
+		<RouterView />
+	</div>
 </template>
 
-<style scoped></style>
+<style scoped>
+	.header-container {
+		width: 100%;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	}
+
+	.main-nav {
+		display: flex;
+		justify-content: flex-start;
+	}
+
+	.content-container {
+		padding: 20px;
+		max-width: 1200px;
+		margin: 0 auto;
+	}
+
+	/* 适配移动设备 */
+	@media (max-width: 768px) {
+		.content-container {
+			padding: 10px;
+		}
+	}
+</style>
