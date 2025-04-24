@@ -35,10 +35,11 @@
 				text-color="#fff"
 				active-text-color="#ffd04b"
 				class="main-nav">
-				<el-menu-item index="/">首页</el-menu-item>
-				<el-menu-item index="/number-search">号码查询</el-menu-item>
-				<el-menu-item index="/lottery-analysis">号码分析</el-menu-item>
-				<el-menu-item index="/position-next-analysis">下一期号码预测</el-menu-item>
+				<el-menu-item index="/home">首页</el-menu-item>
+				<el-menu-item index="/number-search">000-999号码查询</el-menu-item>
+				<el-menu-item index="/lottery-analysis">下一期开奖号码分析</el-menu-item>
+				<el-menu-item index="/p3-next-issue-analysis">下一期P3号码推测</el-menu-item>
+				<el-menu-item index="/fc3d-next-issue-analysis">下一期3D号码推测</el-menu-item>
 			</el-menu>
 		</div>
 	</header>

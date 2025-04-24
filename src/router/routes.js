@@ -1,11 +1,18 @@
 import NumberSearch from "@/views/NumberSearch/index.vue";
 import LotteryAnalysis from "@/views/LotteryAnalysis/index.vue";
-import PositionNextAnalysis from "@/views/PositionNextAnalysis/index.vue";
+import P3NextIssueAnalysis from "@/views/P3NextIssueAnalysis/index.vue";
+import FC3DNextIssueAnalysis from "@/views/FC3DNextIssueAnalysis/index.vue";
+import Home from "@/views/Home/index.vue";
 
 export const routes = [
 	{
 		path: "/",
-		redirect: "/lottery-analysis",
+		redirect: "/home",
+	},
+	{
+		path: "/home",
+		name: "home",
+		component: Home,
 	},
 	{
 		path: "/number-search",
@@ -18,9 +25,14 @@ export const routes = [
 		component: LotteryAnalysis,
 	},
 	{
-		path: "/position-next-analysis",
-		name: "position-next-analysis",
-		component: PositionNextAnalysis,
+		path: "/p3-next-issue-analysis",
+		name: "p3-next-issue-analysis",
+		component: P3NextIssueAnalysis,
+	},
+	{
+		path: "/fc3d-next-issue-analysis",
+		name: "fc3d-next-issue-analysis",
+		component: FC3DNextIssueAnalysis,
 	},
 
 	// {
