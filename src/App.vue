@@ -38,8 +38,9 @@
 				<el-menu-item index="/home">首页</el-menu-item>
 				<el-menu-item index="/number-search">000-999号码查询</el-menu-item>
 				<el-menu-item index="/lottery-analysis">下一期开奖号码分析</el-menu-item>
-				<el-menu-item index="/p3-next-issue-analysis">下一期P3号码推测</el-menu-item>
-				<el-menu-item index="/fc3d-next-issue-analysis">下一期3D号码推测</el-menu-item>
+				<el-menu-item index="/p3-next-issue-analysis">排列三号码推测</el-menu-item>
+				<el-menu-item index="/pl5-next-issue-analysis">排列五号码推测</el-menu-item>
+				<el-menu-item index="/fc3d-next-issue-analysis">福彩3D号码推测</el-menu-item>
 			</el-menu>
 		</div>
 	</header>

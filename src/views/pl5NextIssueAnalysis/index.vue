@@ -4,15 +4,13 @@
 			<div class="control-item">
 				<label>彩票类型:</label>
 				<el-select v-model="caipiaoid" placeholder="选择彩票类型" class="select-control">
-					<el-option :value="16" label="排列三"></el-option>
-					<el-option :value="12" label="福彩3D"></el-option>
+					<el-option :value="17" label="排列五"></el-option>
 				</el-select>
 			</div>
 			<div class="control-item">
 				<label>分析期数:</label>
-				<el-select v-model="limit" placeholder="选择分析期数" class="select-control">
-					<el-option :value="50" label="50期"></el-option>
-					<el-option :value="100" label="100期"></el-option>
+				<el-select v-model="limit" placeholder="选择分析期数" class="select-control" disabled>
+					<el-option :value="50" label="固定50期"></el-option>
 				</el-select>
 			</div>
 			<el-button type="primary" @click="fetchAndAnalyze" class="analyze-btn">分析</el-button>
@@ -43,12 +41,175 @@
 
 		<!-- 分析结果展示区域 -->
 		<div class="analysis-results" v-if="!isAnalysisLoading">
+			<!-- 万位分析 -->
+			<div class="analysis-section position-analysis-section">
+				<h3>万位号码分析 ({{ analysisRange }})</h3>
+				<p>分析万位号码在历史数据中出现的下一期号码规律</p>
+				<p class="selection-note">
+					当前选中的开奖号码万位为 {{ latestNumbers[0] }} 及其相邻号码， 查找的是万位为
+					{{ getRelatedDigits(latestNumbers[0]).join("、") }} 的历史记录
+				</p>
+
+				<div class="position-tabs">
+					<div
+						v-for="num in 10"
+						:key="`tenthousand-${num - 1}`"
+						class="position-tab"
+						:class="{
+							active: selectedTenThousandDigit === num - 1,
+							related: isRelatedDigit(selectedTenThousandDigit, num - 1),
+						}">
+						{{ num - 1 }}
+					</div>
+				</div>
+
+				<div class="stats-table-container" v-if="tenThousandNextStats.length > 0">
+					<table class="stats-table">
+						<thead>
+							<tr>
+								<th>期号</th>
+								<th>匹配位置</th>
+								<th>开奖号码</th>
+								<th>下一期号码</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr
+								v-for="(item, idx) in getPositionMatchData(0, selectedTenThousandDigit)"
+								:key="`tenthousand-match-${idx}`"
+								:class="{ 'center-match': item.matchType === 'center', 'related-match': item.matchType === 'related' }">
+								<td>{{ item.expect }}</td>
+								<td class="match-digit">{{ item.matchDigit }}</td>
+								<td>{{ item.opencode }}</td>
+								<td>{{ item.nextOpencode }}</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+
+				<h4>下一期万位号码出现频率统计</h4>
+				<p class="freq-description">
+					统计当前万位号码({{ latestNumbers[0] }})及其相邻号码({{
+						getRelatedDigits(latestNumbers[0])
+							.filter((n) => n != latestNumbers[0])
+							.join("、")
+					}}) 出现后，下一期万位出现各个数字的频率
+				</p>
+				<div class="stats-table-container">
+					<table class="stats-table">
+						<thead>
+							<tr>
+								<th v-for="i in 10" :key="`tenthousand-header-${i - 1}`">{{ i - 1 }}</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td
+									v-for="i in 10"
+									:key="`tenthousand-cell-${i - 1}`"
+									:class="{
+										'zero-count-cell': getPositionNextFrequency(0, selectedTenThousandDigit, i - 1) === 0,
+										'center-digit-cell': isCenterDigit(0, selectedTenThousandDigit),
+										'related-digit-cell':
+											!isCenterDigit(0, selectedTenThousandDigit) &&
+											isRelatedDigit(parseInt(latestNumbers[0]), selectedTenThousandDigit),
+									}">
+									{{ getPositionNextFrequency(0, selectedTenThousandDigit, i - 1) }}
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			<!-- 千位分析 -->
+			<div class="analysis-section position-analysis-section">
+				<h3>千位号码分析 ({{ analysisRange }})</h3>
+				<p>分析千位号码在历史数据中出现的下一期号码规律</p>
+				<p class="selection-note">
+					当前选中的开奖号码千位为 {{ latestNumbers[1] }} 及其相邻号码， 查找的是千位为
+					{{ getRelatedDigits(latestNumbers[1]).join("、") }} 的历史记录
+				</p>
+
+				<div class="position-tabs">
+					<div
+						v-for="num in 10"
+						:key="`thousand-${num - 1}`"
+						class="position-tab"
+						:class="{
+							active: selectedThousandDigit === num - 1,
+							related: isRelatedDigit(selectedThousandDigit, num - 1),
+						}">
+						{{ num - 1 }}
+					</div>
+				</div>
+
+				<div class="stats-table-container" v-if="thousandNextStats.length > 0">
+					<table class="stats-table">
+						<thead>
+							<tr>
+								<th>期号</th>
+								<th>匹配位置</th>
+								<th>开奖号码</th>
+								<th>下一期号码</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr
+								v-for="(item, idx) in getPositionMatchData(1, selectedThousandDigit)"
+								:key="`thousand-match-${idx}`"
+								:class="{ 'center-match': item.matchType === 'center', 'related-match': item.matchType === 'related' }">
+								<td>{{ item.expect }}</td>
+								<td class="match-digit">{{ item.matchDigit }}</td>
+								<td>{{ item.opencode }}</td>
+								<td>{{ item.nextOpencode }}</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+
+				<h4>下一期千位号码出现频率统计</h4>
+				<p class="freq-description">
+					统计当前千位号码({{ latestNumbers[1] }})及其相邻号码({{
+						getRelatedDigits(latestNumbers[1])
+							.filter((n) => n != latestNumbers[1])
+							.join("、")
+					}}) 出现后，下一期千位出现各个数字的频率
+				</p>
+				<div class="stats-table-container">
+					<table class="stats-table">
+						<thead>
+							<tr>
+								<th v-for="i in 10" :key="`thousand-header-${i - 1}`">{{ i - 1 }}</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td
+									v-for="i in 10"
+									:key="`thousand-cell-${i - 1}`"
+									:class="{
+										'zero-count-cell': getPositionNextFrequency(1, selectedThousandDigit, i - 1) === 0,
+										'center-digit-cell': isCenterDigit(1, selectedThousandDigit),
+										'related-digit-cell':
+											!isCenterDigit(1, selectedThousandDigit) &&
+											isRelatedDigit(parseInt(latestNumbers[1]), selectedThousandDigit),
+									}">
+									{{ getPositionNextFrequency(1, selectedThousandDigit, i - 1) }}
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+
 			<!-- 百位分析 -->
 			<div class="analysis-section position-analysis-section">
 				<h3>百位号码分析 ({{ analysisRange }})</h3>
 				<p>分析百位号码在历史数据中出现的下一期号码规律</p>
 				<p class="selection-note">
-					当前选中的开奖号码百位为 {{ latestNumbers[0] }}，查找的是百位为 {{ latestNumbers[0] }} 的历史记录
+					当前选中的开奖号码百位为 {{ latestNumbers[2] }} 及其相邻号码， 查找的是百位为
+					{{ getRelatedDigits(latestNumbers[2]).join("、") }} 的历史记录
 				</p>
 
 				<div class="position-tabs">
@@ -58,6 +219,7 @@
 						class="position-tab"
 						:class="{
 							active: selectedHundredDigit === num - 1,
+							related: isRelatedDigit(selectedHundredDigit, num - 1),
 						}">
 						{{ num - 1 }}
 					</div>
@@ -68,13 +230,18 @@
 						<thead>
 							<tr>
 								<th>期号</th>
+								<th>匹配位置</th>
 								<th>开奖号码</th>
 								<th>下一期号码</th>
 							</tr>
 						</thead>
 						<tbody>
-							<tr v-for="(item, idx) in getPositionMatchData(0, selectedHundredDigit)" :key="`hundred-match-${idx}`">
+							<tr
+								v-for="(item, idx) in getPositionMatchData(2, selectedHundredDigit)"
+								:key="`hundred-match-${idx}`"
+								:class="{ 'center-match': item.matchType === 'center', 'related-match': item.matchType === 'related' }">
 								<td>{{ item.expect }}</td>
+								<td class="match-digit">{{ item.matchDigit }}</td>
 								<td>{{ item.opencode }}</td>
 								<td>{{ item.nextOpencode }}</td>
 							</tr>
@@ -83,7 +250,13 @@
 				</div>
 
 				<h4>下一期百位号码出现频率统计</h4>
-				<p class="freq-description">统计当前百位号码({{ latestNumbers[0] }}) 出现后，下一期百位出现各个数字的频率</p>
+				<p class="freq-description">
+					统计当前百位号码({{ latestNumbers[2] }})及其相邻号码({{
+						getRelatedDigits(latestNumbers[2])
+							.filter((n) => n != latestNumbers[2])
+							.join("、")
+					}}) 出现后，下一期百位出现各个数字的频率
+				</p>
 				<div class="stats-table-container">
 					<table class="stats-table">
 						<thead>
@@ -97,9 +270,13 @@
 									v-for="i in 10"
 									:key="`hundred-cell-${i - 1}`"
 									:class="{
-										'zero-count-cell': getPositionNextFrequency(0, selectedHundredDigit, i - 1) === 0,
+										'zero-count-cell': getPositionNextFrequency(2, selectedHundredDigit, i - 1) === 0,
+										'center-digit-cell': isCenterDigit(2, selectedHundredDigit),
+										'related-digit-cell':
+											!isCenterDigit(2, selectedHundredDigit) &&
+											isRelatedDigit(parseInt(latestNumbers[2]), selectedHundredDigit),
 									}">
-									{{ getPositionNextFrequency(0, selectedHundredDigit, i - 1) }}
+									{{ getPositionNextFrequency(2, selectedHundredDigit, i - 1) }}
 								</td>
 							</tr>
 						</tbody>
@@ -112,7 +289,8 @@
 				<h3>十位号码分析 ({{ analysisRange }})</h3>
 				<p>分析十位号码在历史数据中出现的下一期号码规律</p>
 				<p class="selection-note">
-					当前选中的开奖号码十位为 {{ latestNumbers[1] }}，查找的是十位为 {{ latestNumbers[1] }} 的历史记录
+					当前选中的开奖号码十位为 {{ latestNumbers[3] }} 及其相邻号码， 查找的是十位为
+					{{ getRelatedDigits(latestNumbers[3]).join("、") }} 的历史记录
 				</p>
 
 				<div class="position-tabs">
@@ -122,6 +300,7 @@
 						class="position-tab"
 						:class="{
 							active: selectedTenDigit === num - 1,
+							related: isRelatedDigit(selectedTenDigit, num - 1),
 						}">
 						{{ num - 1 }}
 					</div>
@@ -132,13 +311,18 @@
 						<thead>
 							<tr>
 								<th>期号</th>
+								<th>匹配位置</th>
 								<th>开奖号码</th>
 								<th>下一期号码</th>
 							</tr>
 						</thead>
 						<tbody>
-							<tr v-for="(item, idx) in getPositionMatchData(1, selectedTenDigit)" :key="`ten-match-${idx}`">
+							<tr
+								v-for="(item, idx) in getPositionMatchData(3, selectedTenDigit)"
+								:key="`ten-match-${idx}`"
+								:class="{ 'center-match': item.matchType === 'center', 'related-match': item.matchType === 'related' }">
 								<td>{{ item.expect }}</td>
+								<td class="match-digit">{{ item.matchDigit }}</td>
 								<td>{{ item.opencode }}</td>
 								<td>{{ item.nextOpencode }}</td>
 							</tr>
@@ -147,7 +331,13 @@
 				</div>
 
 				<h4>下一期十位号码出现频率统计</h4>
-				<p class="freq-description">统计当前十位号码({{ latestNumbers[1] }}) 出现后，下一期十位出现各个数字的频率</p>
+				<p class="freq-description">
+					统计当前十位号码({{ latestNumbers[3] }})及其相邻号码({{
+						getRelatedDigits(latestNumbers[3])
+							.filter((n) => n != latestNumbers[3])
+							.join("、")
+					}}) 出现后，下一期十位出现各个数字的频率
+				</p>
 				<div class="stats-table-container">
 					<table class="stats-table">
 						<thead>
@@ -161,9 +351,13 @@
 									v-for="i in 10"
 									:key="`ten-cell-${i - 1}`"
 									:class="{
-										'zero-count-cell': getPositionNextFrequency(1, selectedTenDigit, i - 1) === 0,
+										'zero-count-cell': getPositionNextFrequency(3, selectedTenDigit, i - 1) === 0,
+										'center-digit-cell': isCenterDigit(3, selectedTenDigit),
+										'related-digit-cell':
+											!isCenterDigit(3, selectedTenDigit) &&
+											isRelatedDigit(parseInt(latestNumbers[3]), selectedTenDigit),
 									}">
-									{{ getPositionNextFrequency(1, selectedTenDigit, i - 1) }}
+									{{ getPositionNextFrequency(3, selectedTenDigit, i - 1) }}
 								</td>
 							</tr>
 						</tbody>
@@ -176,7 +370,8 @@
 				<h3>个位号码分析 ({{ analysisRange }})</h3>
 				<p>分析个位号码在历史数据中出现的下一期号码规律</p>
 				<p class="selection-note">
-					当前选中的开奖号码个位为 {{ latestNumbers[2] }}，查找的是个位为 {{ latestNumbers[2] }} 的历史记录
+					当前选中的开奖号码个位为 {{ latestNumbers[4] }} 及其相邻号码， 查找的是个位为
+					{{ getRelatedDigits(latestNumbers[4]).join("、") }} 的历史记录
 				</p>
 
 				<div class="position-tabs">
@@ -186,6 +381,7 @@
 						class="position-tab"
 						:class="{
 							active: selectedOneDigit === num - 1,
+							related: isRelatedDigit(selectedOneDigit, num - 1),
 						}">
 						{{ num - 1 }}
 					</div>
@@ -196,13 +392,18 @@
 						<thead>
 							<tr>
 								<th>期号</th>
+								<th>匹配位置</th>
 								<th>开奖号码</th>
 								<th>下一期号码</th>
 							</tr>
 						</thead>
 						<tbody>
-							<tr v-for="(item, idx) in getPositionMatchData(2, selectedOneDigit)" :key="`one-match-${idx}`">
+							<tr
+								v-for="(item, idx) in getPositionMatchData(4, selectedOneDigit)"
+								:key="`one-match-${idx}`"
+								:class="{ 'center-match': item.matchType === 'center', 'related-match': item.matchType === 'related' }">
 								<td>{{ item.expect }}</td>
+								<td class="match-digit">{{ item.matchDigit }}</td>
 								<td>{{ item.opencode }}</td>
 								<td>{{ item.nextOpencode }}</td>
 							</tr>
@@ -211,7 +412,13 @@
 				</div>
 
 				<h4>下一期个位号码出现频率统计</h4>
-				<p class="freq-description">统计当前个位号码({{ latestNumbers[2] }}) 出现后，下一期个位出现各个数字的频率</p>
+				<p class="freq-description">
+					统计当前个位号码({{ latestNumbers[4] }})及其相邻号码({{
+						getRelatedDigits(latestNumbers[4])
+							.filter((n) => n != latestNumbers[4])
+							.join("、")
+					}}) 出现后，下一期个位出现各个数字的频率
+				</p>
 				<div class="stats-table-container">
 					<table class="stats-table">
 						<thead>
@@ -225,9 +432,13 @@
 									v-for="i in 10"
 									:key="`one-cell-${i - 1}`"
 									:class="{
-										'zero-count-cell': getPositionNextFrequency(2, selectedOneDigit, i - 1) === 0,
+										'zero-count-cell': getPositionNextFrequency(4, selectedOneDigit, i - 1) === 0,
+										'center-digit-cell': isCenterDigit(4, selectedOneDigit),
+										'related-digit-cell':
+											!isCenterDigit(4, selectedOneDigit) &&
+											isRelatedDigit(parseInt(latestNumbers[4]), selectedOneDigit),
 									}">
-									{{ getPositionNextFrequency(2, selectedOneDigit, i - 1) }}
+									{{ getPositionNextFrequency(4, selectedOneDigit, i - 1) }}
 								</td>
 							</tr>
 						</tbody>
@@ -252,13 +463,14 @@
 	 * 彩票类型ID
 	 * 16: 排列三
 	 * 12: 福彩3D
+	 * 17: 排列五
 	 */
-	const caipiaoid = ref(12); // 默认为福彩3D
+	const caipiaoid = ref(17); // 默认为排列五
 
 	/**
-	 * 分析期数 - 默认为100期
+	 * 分析期数 - 固定为50期
 	 */
-	const limit = ref(100);
+	const limit = ref(50);
 
 	/**
 	 * 存储所有获取到的历史开奖数据
@@ -269,6 +481,16 @@
 	 * 当前选择的期号，用于确定从哪一期开始分析
 	 */
 	const selectedDrawPeriod = ref(null);
+
+	/**
+	 * 选中的万位数字（0-9）
+	 */
+	const selectedTenThousandDigit = ref(0);
+
+	/**
+	 * 选中的千位数字（0-9）
+	 */
+	const selectedThousandDigit = ref(0);
 
 	/**
 	 * 选中的百位数字（0-9）
@@ -284,6 +506,16 @@
 	 * 选中的个位数字（0-9）
 	 */
 	const selectedOneDigit = ref(0);
+
+	/**
+	 * 万位的下一期号码统计
+	 */
+	const tenThousandNextStats = ref([]);
+
+	/**
+	 * 千位的下一期号码统计
+	 */
+	const thousandNextStats = ref([]);
 
 	/**
 	 * 百位的下一期号码统计
@@ -328,7 +560,7 @@
 	 * 获取当前选择期号的开奖号码数组
 	 */
 	const latestNumbers = computed(() => {
-		if (historyData.value.length === 0) return ["-", "-", "-"];
+		if (historyData.value.length === 0) return ["-", "-", "-", "-", "-"];
 
 		const draw = historyData.value.find((item) => item.expect === selectedDrawPeriod.value) || historyData.value[0];
 
@@ -338,7 +570,7 @@
 			return draw.number.split(/\s+/);
 		}
 
-		return ["-", "-", "-"];
+		return ["-", "-", "-", "-", "-"];
 	});
 
 	/**
@@ -350,7 +582,7 @@
 		const idx = historyData.value.findIndex((item) => item.expect === selectedDrawPeriod.value);
 		if (idx < 0) return "";
 
-		// 我们需要所选期号往前的数据
+		// 我们需要所选期号往前的49条数据，一共50条
 		const dataCount = historyData.value.length - idx;
 		// 确保不超过实际数据量
 		const participatingData = Math.min(dataCount, limit.value);
@@ -467,8 +699,22 @@
 	 * @returns {boolean} 是否相关
 	 */
 	function isRelatedDigit(selected, current) {
-		// 只考虑相等的情况，不再处理相邻数字
-		return selected === current;
+		// 如果是同一个数字，通过active类来显示，不需要related类
+		if (selected === current) {
+			return false;
+		}
+
+		// 对于边界情况的处理
+		if (selected === 0) {
+			// 0只与1相关
+			return current === 1;
+		} else if (selected === 9) {
+			// 9只与8相关
+			return current === 8;
+		} else {
+			// 中间数字与左右各一个数字相关
+			return current === selected - 1 || current === selected + 1;
+		}
 	}
 
 	/**
@@ -482,9 +728,6 @@
 		const idx = historyData.value.findIndex((item) => item.expect === selectedDrawPeriod.value);
 		if (idx === -1) return;
 
-		// 先根据当前开奖号码更新选中的数字
-		updateSelectedDigitsFromDrawNumber();
-
 		// 检查是否有足够的数据进行分析
 		const availableData = historyData.value.length - idx;
 
@@ -497,6 +740,8 @@
 		} else {
 			// 数据足够或者是最新一期，直接分析
 			analyzeDataBySelectedPeriod();
+			// 根据当前开奖号码更新选中的数字
+			updateSelectedDigitsFromDrawNumber();
 		}
 	}
 
@@ -547,12 +792,16 @@
 	 */
 	function analyzePositionData(data) {
 		// 清空现有分析数据
+		tenThousandNextStats.value = [];
+		thousandNextStats.value = [];
 		hundredNextStats.value = [];
 		tenNextStats.value = [];
 		oneNextStats.value = [];
 
-		// 初始化三个位置的统计数组
+		// 初始化五个位置的统计数组
 		for (let digit = 0; digit <= 9; digit++) {
+			tenThousandNextStats.value[digit] = { digit, nextDigits: Array(10).fill(0), matchData: [] };
+			thousandNextStats.value[digit] = { digit, nextDigits: Array(10).fill(0), matchData: [] };
 			hundredNextStats.value[digit] = { digit, nextDigits: Array(10).fill(0), matchData: [] };
 			tenNextStats.value[digit] = { digit, nextDigits: Array(10).fill(0), matchData: [] };
 			oneNextStats.value[digit] = { digit, nextDigits: Array(10).fill(0), matchData: [] };
@@ -594,15 +843,49 @@
 			}
 
 			// 如果无法解析号码，跳过此期
-			if (currentNumbers.length < 3 || nextNumbers.length < 3) {
+			if (currentNumbers.length < 5 || nextNumbers.length < 5) {
 				continue;
 			}
 
+			// 万位分析
+			const tenThousandDigit = currentNumbers[0];
+			if (tenThousandDigit >= 0 && tenThousandDigit <= 9) {
+				// 统计下一期万位的数字
+				const nextTenThousandDigit = nextNumbers[0];
+				if (nextTenThousandDigit >= 0 && nextTenThousandDigit <= 9) {
+					tenThousandNextStats.value[tenThousandDigit].nextDigits[nextTenThousandDigit]++;
+				}
+
+				// 添加匹配数据
+				tenThousandNextStats.value[tenThousandDigit].matchData.push({
+					expect: currentDraw.expect,
+					opencode: currentDraw.opencode || currentDraw.number,
+					nextOpencode: nextDraw.opencode || nextDraw.number,
+				});
+			}
+
+			// 千位分析
+			const thousandDigit = currentNumbers[1];
+			if (thousandDigit >= 0 && thousandDigit <= 9) {
+				// 统计下一期千位的数字
+				const nextThousandDigit = nextNumbers[1];
+				if (nextThousandDigit >= 0 && nextThousandDigit <= 9) {
+					thousandNextStats.value[thousandDigit].nextDigits[nextThousandDigit]++;
+				}
+
+				// 添加匹配数据
+				thousandNextStats.value[thousandDigit].matchData.push({
+					expect: currentDraw.expect,
+					opencode: currentDraw.opencode || currentDraw.number,
+					nextOpencode: nextDraw.opencode || nextDraw.number,
+				});
+			}
+
 			// 百位分析
-			const hundredDigit = currentNumbers[0];
+			const hundredDigit = currentNumbers[2];
 			if (hundredDigit >= 0 && hundredDigit <= 9) {
 				// 只统计下一期百位的数字
-				const nextHundredDigit = nextNumbers[0];
+				const nextHundredDigit = nextNumbers[2];
 				if (nextHundredDigit >= 0 && nextHundredDigit <= 9) {
 					hundredNextStats.value[hundredDigit].nextDigits[nextHundredDigit]++;
 				}
@@ -616,10 +899,10 @@
 			}
 
 			// 十位分析
-			const tenDigit = currentNumbers[1];
+			const tenDigit = currentNumbers[3];
 			if (tenDigit >= 0 && tenDigit <= 9) {
 				// 只统计下一期十位的数字
-				const nextTenDigit = nextNumbers[1];
+				const nextTenDigit = nextNumbers[3];
 				if (nextTenDigit >= 0 && nextTenDigit <= 9) {
 					tenNextStats.value[tenDigit].nextDigits[nextTenDigit]++;
 				}
@@ -633,10 +916,10 @@
 			}
 
 			// 个位分析
-			const oneDigit = currentNumbers[2];
+			const oneDigit = currentNumbers[4];
 			if (oneDigit >= 0 && oneDigit <= 9) {
 				// 只统计下一期个位的数字
-				const nextOneDigit = nextNumbers[2];
+				const nextOneDigit = nextNumbers[4];
 				if (nextOneDigit >= 0 && nextOneDigit <= 9) {
 					oneNextStats.value[oneDigit].nextDigits[nextOneDigit]++;
 				}
@@ -653,34 +936,48 @@
 
 	/**
 	 * 获取指定位置和数字的匹配数据
-	 * @param {number} position 位置索引(0:百位, 1:十位, 2:个位)
+	 * @param {number} position 位置索引(0:万位, 1:千位, 2:百位, 3:十位, 4:个位)
 	 * @param {number} digit 要查询的数字(0-9)
 	 * @returns {Array} 匹配数据数组
 	 */
 	function getPositionMatchData(position, digit) {
+		// 获取相邻数字
+		const relatedDigits = getRelatedDigits(digit);
+
 		// 根据位置选择对应的统计数据
 		let statsArray = [];
 		if (position === 0) {
-			statsArray = hundredNextStats.value;
+			statsArray = tenThousandNextStats.value;
 		} else if (position === 1) {
-			statsArray = tenNextStats.value;
+			statsArray = thousandNextStats.value;
 		} else if (position === 2) {
+			statsArray = hundredNextStats.value;
+		} else if (position === 3) {
+			statsArray = tenNextStats.value;
+		} else if (position === 4) {
 			statsArray = oneNextStats.value;
 		}
 
-		// 只收集当前数字的匹配数据
-		let matchData = [];
-		if (statsArray[digit] && statsArray[digit].matchData) {
-			// 所有匹配数据都标记为中心数字
-			matchData = statsArray[digit].matchData.map((item) => ({
-				...item,
-				matchDigit: digit,
-				matchType: "center",
-			}));
+		// 收集所有匹配的数据（包括中心数字和相邻数字）
+		let allMatchData = [];
+
+		// 遍历所有需要匹配的数字
+		for (const relatedDigit of relatedDigits) {
+			if (statsArray[relatedDigit] && statsArray[relatedDigit].matchData) {
+				// 将匹配数据添加到结果中，并添加一个标记表明是中心数字还是相邻数字
+				const matchType = relatedDigit === digit ? "center" : "related";
+				const matchData = statsArray[relatedDigit].matchData.map((item) => ({
+					...item,
+					matchDigit: relatedDigit,
+					matchType: matchType,
+				}));
+
+				allMatchData = [...allMatchData, ...matchData];
+			}
 		}
 
 		// 按期号排序
-		return matchData.sort((a, b) => b.expect.localeCompare(a.expect));
+		return allMatchData.sort((a, b) => b.expect.localeCompare(a.expect));
 	}
 
 	/**
@@ -690,39 +987,59 @@
 	 */
 	function getRelatedDigits(digit) {
 		digit = parseInt(digit);
-		// 只返回中心数字本身，不包含相邻数字
-		return [digit];
+
+		// 对于边界情况的处理
+		if (digit === 0) {
+			return [0, 1]; // 0和1
+		} else if (digit === 9) {
+			return [8, 9]; // 8和9
+		} else {
+			// 中间数字与左右各一个数字
+			return [digit - 1, digit, digit + 1];
+		}
 	}
 
 	/**
 	 * 获取指定位置特定数字的下一期号码频率
-	 * @param {number} position 位置索引(0:百位, 1:十位, 2:个位)
+	 * @param {number} position 位置索引(0:万位, 1:千位, 2:百位, 3:十位, 4:个位)
 	 * @param {number} fromDigit 当前位数字(0-9)
 	 * @param {number} toDigit 下一期数字(0-9)
 	 * @returns {number} 频率数值
 	 */
 	function getPositionNextFrequency(position, fromDigit, toDigit) {
-		// 获取对应位置的统计数据
+		// 获取相关数字（中心数字及其相邻数字）
+		const relatedDigits = getRelatedDigits(fromDigit);
+
+		// 累计所有相关数字的频率
+		let totalFreq = 0;
 		let statsArray = [];
+
+		// 获取对应位置的统计数据
 		if (position === 0) {
-			statsArray = hundredNextStats.value;
+			statsArray = tenThousandNextStats.value;
 		} else if (position === 1) {
-			statsArray = tenNextStats.value;
+			statsArray = thousandNextStats.value;
 		} else if (position === 2) {
+			statsArray = hundredNextStats.value;
+		} else if (position === 3) {
+			statsArray = tenNextStats.value;
+		} else if (position === 4) {
 			statsArray = oneNextStats.value;
 		}
 
-		// 只返回当前数字的下一期频率
-		if (statsArray[fromDigit]) {
-			return statsArray[fromDigit].nextDigits[toDigit] || 0;
+		// 遍历所有相关数字，累计下一期数字出现的次数
+		for (const relatedDigit of relatedDigits) {
+			if (statsArray[relatedDigit]) {
+				totalFreq += statsArray[relatedDigit].nextDigits[toDigit] || 0;
+			}
 		}
 
-		return 0;
+		return totalFreq;
 	}
 
 	/**
 	 * 选中号码相关的位置
-	 * @param {number} position 位置索引（0=百位，1=十位，2=个位）
+	 * @param {number} position 位置索引(0:万位, 1:千位, 2:百位, 3:十位, 4:个位)
 	 * @param {number} digit 要选中的数字
 	 */
 	function selectRelatedDigits(position, digit) {
@@ -731,13 +1048,19 @@
 
 		// 根据位置选择对应的状态变量
 		switch (position) {
-			case 0: // 百位
+			case 0: // 万位
+				selectedTenThousandDigit.value = digit;
+				break;
+			case 1: // 千位
+				selectedThousandDigit.value = digit;
+				break;
+			case 2: // 百位
 				selectedHundredDigit.value = digit;
 				break;
-			case 1: // 十位
+			case 3: // 十位
 				selectedTenDigit.value = digit;
 				break;
-			case 2: // 个位
+			case 4: // 个位
 				selectedOneDigit.value = digit;
 				break;
 		}
@@ -747,47 +1070,49 @@
 	 * 根据当前开奖号码自动选择分析数字
 	 */
 	function updateSelectedDigitsFromDrawNumber() {
-		// 确保有开奖号码
-		if (historyData.value.length === 0 || !selectedDrawPeriod.value) return;
-
-		// 从历史数据中找到选中期号的数据
-		const selectedDraw = historyData.value.find((item) => item.expect === selectedDrawPeriod.value);
-		if (!selectedDraw) return;
-
-		// 解析选中期号的开奖号码
-		let numbers = [];
-		if (selectedDraw.opencode) {
-			numbers = selectedDraw.opencode.split(",");
-		} else if (selectedDraw.number) {
-			numbers = selectedDraw.number.split(/\s+/);
+		if (latestNumbers.value[0] !== "-") {
+			// 更新万位选中的数字
+			selectRelatedDigits(0, parseInt(latestNumbers.value[0]));
 		}
 
-		// 如果解析成功，更新选中的百位、十位和个位数字
-		if (numbers.length >= 3) {
+		if (latestNumbers.value[1] !== "-") {
+			// 更新千位选中的数字
+			selectRelatedDigits(1, parseInt(latestNumbers.value[1]));
+		}
+
+		if (latestNumbers.value[2] !== "-") {
 			// 更新百位选中的数字
-			selectRelatedDigits(0, parseInt(numbers[0]));
+			selectRelatedDigits(2, parseInt(latestNumbers.value[2]));
+		}
 
+		if (latestNumbers.value[3] !== "-") {
 			// 更新十位选中的数字
-			selectRelatedDigits(1, parseInt(numbers[1]));
+			selectRelatedDigits(3, parseInt(latestNumbers.value[3]));
+		}
 
+		if (latestNumbers.value[4] !== "-") {
 			// 更新个位选中的数字
-			selectRelatedDigits(2, parseInt(numbers[2]));
+			selectRelatedDigits(4, parseInt(latestNumbers.value[4]));
 		}
 	}
 
 	/**
 	 * 判断是否为中心数字（用于表格显示）
-	 * @param {number} position 位置索引(0:百位, 1:十位, 2:个位)
+	 * @param {number} position 位置索引(0:万位, 1:千位, 2:百位, 3:十位, 4:个位)
 	 * @param {number} digit 数字(0-9)
 	 * @returns {boolean} 是否为中心数字
 	 */
 	function isCenterDigit(position, digit) {
 		if (position === 0) {
-			return parseInt(latestNumbers[0]) === digit;
+			return parseInt(latestNumbers.value[0]) === digit;
 		} else if (position === 1) {
-			return parseInt(latestNumbers[1]) === digit;
+			return parseInt(latestNumbers.value[1]) === digit;
 		} else if (position === 2) {
-			return parseInt(latestNumbers[2]) === digit;
+			return parseInt(latestNumbers.value[2]) === digit;
+		} else if (position === 3) {
+			return parseInt(latestNumbers.value[3]) === digit;
+		} else if (position === 4) {
+			return parseInt(latestNumbers.value[4]) === digit;
 		}
 		return false;
 	}
@@ -811,14 +1136,6 @@
 	watch(caipiaoid, () => {
 		// 当彩票类型变化时，重新获取数据并分析
 		selectedDrawPeriod.value = null; // 重置选中的期号
-		fetchAndAnalyze();
-	});
-
-	/**
-	 * 监听分析期数变化
-	 */
-	watch(limit, () => {
-		// 当分析期数变化时，重新获取数据并分析
 		fetchAndAnalyze();
 	});
 
@@ -1007,11 +1324,10 @@
 		border-radius: 5px;
 		font-weight: bold;
 		transition: all 0.2s ease;
-		cursor: default;
 	}
 
 	.position-tab:hover {
-		background-color: #eee;
+		background-color: #e0e0e0;
 	}
 
 	.position-tab.active {
@@ -1054,6 +1370,8 @@
 		background-color: #ff0000 !important;
 		color: #ffffff !important;
 		font-weight: bold !important;
+		border-color: #ddd !important; /* 确保边框是标准灰色 */
+		border-width: 1px !important; /* 确保边框是1px宽 */
 	}
 
 	/* 统计表格样式 */
@@ -1073,8 +1391,9 @@
 	.stats-table td {
 		border: 1px solid #ddd;
 		text-align: center;
-		padding: 8px;
-		height: 40px;
+		padding: 4px; /* 减小内边距 */
+		height: 36px; /* 稍微减小高度 */
+		width: 10%; /* 使所有单元格宽度平均 */
 	}
 
 	.stats-table th {
@@ -1084,6 +1403,14 @@
 
 	.stats-table tbody tr:nth-child(even) {
 		background-color: #f9f9f9;
+	}
+
+	/* 统一设置所有表格和单元格的边框 */
+	table,
+	th,
+	td {
+		border-color: #ddd !important;
+		border-width: 1px !important; /* 确保边框是1px宽 */
 	}
 
 	/* 简化表格样式，去除所有不必要的样式 */
@@ -1103,17 +1430,63 @@
 
 	/* 表格单元格规范高度 */
 	.el-table td.el-table__cell {
-		padding: 6px 0;
+		padding: 4px 0; /* 减小内边距 */
+		border-color: #ddd !important;
+		border-width: 1px !important; /* 确保边框是1px宽 */
 	}
 
 	/* 设置表格行高度统一 */
 	.el-table__row {
-		height: auto !important;
+		height: 36px !important; /* 固定行高 */
 	}
 
 	/* 修复单元格内容边距 */
 	.el-table .cell {
 		line-height: normal;
-		padding: 5px;
+		padding: 2px; /* 减小内边距 */
+	}
+
+	/* 中心数字匹配行样式 - 简化，移除背景 */
+	.center-match {
+		/* 移除特殊背景 */
+	}
+
+	/* 相邻数字匹配行样式 - 简化，移除背景 */
+	.related-match {
+		/* 移除特殊背景 */
+	}
+
+	/* 中心数字单元格样式 - 简化，保持普通状态 */
+	.center-digit-cell {
+		/* 移除特殊背景和样式 */
+		border-color: #ddd !important;
+		border-width: 1px !important; /* 确保边框是1px宽 */
+	}
+
+	/* 相邻数字单元格样式 - 简化，保持普通状态 */
+	.related-digit-cell {
+		/* 移除特殊背景和样式 */
+		border-color: #ddd !important;
+		border-width: 1px !important; /* 确保边框是1px宽 */
+	}
+
+	/* 匹配位置单元格样式 - 简化 */
+	.match-digit {
+		/* 保持普通文本样式 */
+	}
+
+	/* 覆盖表格相关所有可能的边框颜色和宽度 */
+	.stats-table tr,
+	.stats-table td,
+	.stats-table th,
+	.el-table__row,
+	.el-table__cell,
+	.el-table th.el-table__cell,
+	.el-table tr,
+	.el-table--border,
+	.el-table--border th,
+	.el-table--border td {
+		border-color: #ddd !important;
+		border-width: 1px !important; /* 确保边框是1px宽 */
 	}
 </style>

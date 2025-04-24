@@ -1,7 +1,8 @@
 import NumberSearch from "@/views/NumberSearch/index.vue";
 import LotteryAnalysis from "@/views/LotteryAnalysis/index.vue";
-import P3NextIssueAnalysis from "@/views/P3NextIssueAnalysis/index.vue";
-import FC3DNextIssueAnalysis from "@/views/FC3DNextIssueAnalysis/index.vue";
+import pl3NextIssueAnalysis from "@/views/pl3NextIssueAnalysis/index.vue";
+import pl5NextIssueAnalysis from "@/views/pl5NextIssueAnalysis/index.vue";
+import fc3dNextIssueAnalysis from "@/views/fc3dNextIssueAnalysis/index.vue";
 import Home from "@/views/Home/index.vue";
 
 export const routes = [
@@ -27,12 +28,17 @@ export const routes = [
 	{
 		path: "/p3-next-issue-analysis",
 		name: "p3-next-issue-analysis",
-		component: P3NextIssueAnalysis,
+		component: pl3NextIssueAnalysis,
 	},
 	{
 		path: "/fc3d-next-issue-analysis",
 		name: "fc3d-next-issue-analysis",
-		component: FC3DNextIssueAnalysis,
+		component: fc3dNextIssueAnalysis,
+	},
+	{
+		path: "/pl5-next-issue-analysis",
+		name: "pl5-next-issue-analysis",
+		component: pl5NextIssueAnalysis,
 	},
 
 	// {
