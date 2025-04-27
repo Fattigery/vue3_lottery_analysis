@@ -13,6 +13,7 @@
 				<el-select v-model="limit" placeholder="选择分析期数" class="select-control">
 					<el-option :value="50" label="50期"></el-option>
 					<el-option :value="100" label="100期"></el-option>
+					<el-option :value="120" label="120期"></el-option>
 				</el-select>
 			</div>
 			<el-button type="primary" @click="fetchAndAnalyze" class="analyze-btn">分析</el-button>
@@ -256,9 +257,9 @@
 	const caipiaoid = ref(12); // 默认为福彩3D
 
 	/**
-	 * 分析期数 - 默认为100期
+	 * 分析期数 - 默认为120期
 	 */
-	const limit = ref(100);
+	const limit = ref(120);
 
 	/**
 	 * 存储所有获取到的历史开奖数据
