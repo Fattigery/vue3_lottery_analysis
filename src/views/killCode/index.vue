@@ -407,32 +407,38 @@
 		// 直接使用分析期数作为请求的数据量
 		const requestLimit = limit.value;
 
+		// 确定API接口URL
+		let apiUrl = "";
+		if (caipiaoid.value === 16) {
+			// 排列三
+			apiUrl = `http://8.152.201.135:5003/api/lottery/pls?size=${requestLimit}`;
+		} else if (caipiaoid.value === 12) {
+			// 福彩3D
+			apiUrl = `http://8.152.201.135:5003/api/lottery/fcsd?size=${requestLimit}`;
+		}
+
 		// 发起API请求获取历史数据
-		fetch(`https://api.hcaiy.com/api/index/historyList?caipiaoid=${caipiaoid.value}&limit=${requestLimit}&page=1`)
-			.then((res) => res.json())
+		fetch(apiUrl)
+			.then((res) => {
+				if (!res.ok) {
+					throw new Error(`网络请求失败: ${res.status} ${res.statusText}`);
+				}
+				return res.json();
+			})
 			.then((data) => {
-				if (data.code === 1 && data.data) {
+				if (data.code === 200 && data.data) {
 					// 处理返回的数据
-					let dataArray = [];
-					if (data.data.data && Array.isArray(data.data.data)) {
-						dataArray = data.data.data;
-					} else if (Array.isArray(data.data)) {
-						dataArray = data.data;
-					}
+					let dataArray = data.data;
 
 					if (dataArray.length > 0) {
 						// 规范化数据格式
 						const processedData = dataArray.map((item) => {
-							const processedItem = { ...item };
-							// 统一开奖号码格式为逗号分隔
-							if (!processedItem.opencode && processedItem.number) {
-								processedItem.opencode = processedItem.number.replace(/\s+/g, ",");
-							}
-							// 统一期号字段为expect
-							if (!processedItem.expect && processedItem.issueno) {
-								processedItem.expect = processedItem.issueno;
-							}
-							return processedItem;
+							return {
+								expect: item.issue,
+								opencode: item.openCode,
+								date: item.date,
+								week: item.week,
+							};
 						});
 
 						// 更新历史数据

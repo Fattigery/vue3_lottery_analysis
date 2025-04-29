@@ -27,8 +27,11 @@
 					<el-option :value="14" label="往前14期"></el-option>
 					<el-option :value="20" label="往前20期"></el-option>
 					<el-option :value="30" label="往前30期"></el-option>
-					<el-option :value="40" label="往前40期"></el-option>
 					<el-option :value="50" label="往前50期"></el-option>
+					<el-option :value="80" label="往前80期"></el-option>
+					<el-option :value="100" label="往前100期"></el-option>
+					<el-option :value="120" label="往前120期"></el-option>
+					<el-option :value="150" label="往前150期"></el-option>
 				</el-select>
 			</div>
 			<el-button type="primary" @click="fetchAndAnalyze" class="analyze-btn">分析</el-button>
@@ -445,60 +448,59 @@
 		isAnalysisLoading.value = true;
 		analysisLoadingText.value = "正在获取数据，请稍候...";
 
-		// 计算需要请求的数据量
-		// 修改：始终多请求一条数据，确保分析数据与分析期数一致
-		let requestLimit = limit.value + 1; // 多请求一条数据
+		// 计算需要请求的数据量，至少为分析期数
+		let requestLimit = limit.value;
 
 		// 如果已经选择了期号且不是最新一期，计算期号差距
 		if (selectedDrawPeriod.value && historyData.value.length > 0) {
 			const selectedIndex = historyData.value.findIndex((item) => item.expect === selectedDrawPeriod.value);
-			// 如果找到选中的期号，且不是第一期
-			if (selectedIndex > 0) {
-				// 计算选中期号与最新期号的差距
-				const periodDiff = selectedIndex;
-				// 需要请求的数据量 = 分析期数 + 期号差距 + 1
-				requestLimit = limit.value + periodDiff + 1;
-				console.log(`选中期号与最新期相差${periodDiff}期，需要请求${requestLimit}期数据`);
+			// 如果找到选中的期号
+			if (selectedIndex >= 0) {
+				// 需要请求的数据量 = 分析期数 + 期号与最新期的差距 + 1(多请求一条数据)
+				requestLimit = Math.max(limit.value + 1, selectedIndex + limit.value + 1);
+				console.log(`需要请求${requestLimit}期数据，确保能分析${limit.value}期`);
 			}
+		} else {
+			// 如果没有选择期号或是第一次请求，也多请求一条数据
+			requestLimit = limit.value + 1;
+		}
+
+		// 确定API接口URL
+		let apiUrl = "";
+		if (caipiaoid.value === 16) {
+			// 排列三
+			apiUrl = `http://8.152.201.135:5003/api/lottery/pls?size=${requestLimit}`;
+		} else if (caipiaoid.value === 12) {
+			// 福彩3D
+			apiUrl = `http://8.152.201.135:5003/api/lottery/fcsd?size=${requestLimit}`;
 		}
 
 		// 发起API请求获取历史数据
-		fetch(`https://api.hcaiy.com/api/index/historyList?caipiaoid=${caipiaoid.value}&limit=${requestLimit}&page=1`)
-			.then((res) => res.json())
+		fetch(apiUrl)
+			.then((res) => {
+				if (!res.ok) {
+					throw new Error(`网络请求失败: ${res.status} ${res.statusText}`);
+				}
+				return res.json();
+			})
 			.then((data) => {
-				if (data.code === 1 && data.data) {
+				if (data.code === 200 && data.data) {
 					// 处理返回的数据
-					let dataArray = [];
-					if (data.data.data && Array.isArray(data.data.data)) {
-						dataArray = data.data.data;
-					} else if (Array.isArray(data.data)) {
-						dataArray = data.data;
-					}
+					let dataArray = data.data;
 
 					if (dataArray.length > 0) {
 						// 规范化数据格式
 						const processedData = dataArray.map((item) => {
-							const processedItem = { ...item };
-							// 统一开奖号码格式为逗号分隔
-							if (!processedItem.opencode && processedItem.number) {
-								processedItem.opencode = processedItem.number.replace(/\s+/g, ",");
-							}
-							// 统一期号字段为expect
-							if (!processedItem.expect && processedItem.issueno) {
-								processedItem.expect = processedItem.issueno;
-							}
-							return processedItem;
+							return {
+								expect: item.issue,
+								opencode: item.openCode,
+								date: item.date,
+								week: item.week,
+							};
 						});
 
 						// 更新历史数据
 						historyData.value = processedData;
-
-						// 立即更新latestFrequencyData，避免位置频率统计显示错误
-						if (processedData.length >= 50) {
-							latestFrequencyData.value = processedData.slice(0, 50);
-						} else {
-							latestFrequencyData.value = processedData;
-						}
 
 						// 处理期号选择
 						if (!selectedDrawPeriod.value) {
@@ -614,23 +616,23 @@
 				return;
 			}
 
-			// 检查是否有足够的数据进行分析
+			// 检查是否有足够的数据进行分析（需要比limit多一期，因为当前期不参与分析）
 			const availableData = historyData.value.length - idx - 1;
 
 			// 如果数据不足但仍有数据，使用可用数据进行分析
-			if (availableData < limit.value && availableData > 0) {
+			if (availableData < limit.value + 1 && availableData > 0) {
 				// 只在直接调用analyzeDataBySelectedPeriod时显示提示，避免重复提示
 				if (!isAnalysisLoading.value) {
-					ElMessage.warning(`所选期号之前的数据不足${limit.value}期，将使用可用的${availableData}期数据进行分析`);
+					ElMessage.warning(`所选期号之前的数据不足${limit.value}期，将使用可用的${availableData - 1}期数据进行分析`);
 				}
-			} else if (availableData <= 0) {
-				// 如果没有可用数据，则显示提示信息
+			} else if (availableData <= 1) {
+				// 如果没有可用数据或只有一期数据，则显示提示信息
 				isAnalysisLoading.value = true;
-				analysisLoadingText.value = "所选期号之前没有数据，请选择其他期号";
+				analysisLoadingText.value = "所选期号之前没有足够数据，请选择其他期号";
 				return;
 			}
 
-			// 获取当前选中期号的开奖号码
+			// 获取当前选中期号的开奖号码（用于频率统计）
 			selectedNumbers = historyData.value[idx].opencode
 				? historyData.value[idx].opencode.split(",")
 				: historyData.value[idx].number
@@ -848,7 +850,7 @@
 		// 修改标题和描述以反映新的查找方式
 		return {
 			positionName: positionNames[position],
-			title: `${positionNames[position]}分析 (当前号码: ${digit})`,
+			title: `${positionNames[position]}分析 (当前号码: ${digit}) (${periodRange})`,
 			description: `查找历史数据中任意位置包含 ${digit} 的期数，并统计下一期出现的号码：`,
 			matchData,
 			digitStatsData: [digitStatsRow],
@@ -935,7 +937,6 @@
 		// 固定获取50期数据
 		const frequencyDataLimit = 50;
 		let requestLimit = frequencyDataLimit;
-		let page = 1;
 
 		// 如果有选择的期号，则计算与最新期的差距
 		if (selectedDrawPeriod.value && historyData.value.length > 0) {
@@ -948,12 +949,10 @@
 				// 如果差距为0（选择的是最新期），则直接请求最新的50期
 				if (periodDiff === 0) {
 					requestLimit = frequencyDataLimit;
-					page = 1;
 				} else {
-					// 否则，需要计算页码和请求数量
+					// 否则，需要计算请求数量
 					// 如果差距是10期，需要请求60期数据(10+50)，确保包含选中期号及之后的50期
 					requestLimit = periodDiff + frequencyDataLimit;
-					page = 1;
 					console.log(
 						`选中期号与最新期相差${periodDiff}期，需要请求${requestLimit}期数据，确保包含所选期号及之后的50期`
 					);
@@ -961,11 +960,18 @@
 			}
 		}
 
-		// 添加时间戳防止缓存
-		const timestamp = new Date().getTime();
-		fetch(
-			`https://api.hcaiy.com/api/index/historyList?caipiaoid=${caipiaoid.value}&limit=${requestLimit}&page=${page}&_=${timestamp}`
-		)
+		// 确定API接口URL
+		let apiUrl = "";
+		if (caipiaoid.value === 16) {
+			// 排列三
+			apiUrl = `http://8.152.201.135:5003/api/lottery/pls?size=${requestLimit}`;
+		} else if (caipiaoid.value === 12) {
+			// 福彩3D
+			apiUrl = `http://8.152.201.135:5003/api/lottery/fcsd?size=${requestLimit}`;
+		}
+
+		// 发起API请求获取历史数据
+		fetch(apiUrl)
 			.then((res) => {
 				if (!res.ok) {
 					throw new Error(`网络请求失败: ${res.status} ${res.statusText}`);
@@ -973,24 +979,19 @@
 				return res.json();
 			})
 			.then((data) => {
-				if (data.code === 1 && data.data) {
-					let dataArray = [];
-					if (data.data.data && Array.isArray(data.data.data)) {
-						dataArray = data.data.data;
-					} else if (Array.isArray(data.data)) {
-						dataArray = data.data;
-					}
+				if (data.code === 200 && data.data) {
+					// 处理返回的数据
+					let dataArray = data.data;
 
 					if (dataArray.length > 0) {
+						// 规范化数据格式
 						const processedData = dataArray.map((item) => {
-							const processedItem = { ...item };
-							if (!processedItem.opencode && processedItem.number) {
-								processedItem.opencode = processedItem.number.replace(/\s+/g, ",");
-							}
-							if (!processedItem.expect && processedItem.issueno) {
-								processedItem.expect = processedItem.issueno;
-							}
-							return processedItem;
+							return {
+								expect: item.issue,
+								opencode: item.openCode,
+								date: item.date,
+								week: item.week,
+							};
 						});
 
 						// 存储频率统计数据
@@ -1389,6 +1390,14 @@
 		fetchAndAnalyze();
 	});
 
+	/**
+	 * 监听分析期数变化
+	 */
+	watch(limit, () => {
+		// 当分析期数变化时，重新获取数据并分析
+		fetchAndAnalyze();
+	});
+
 	// ==================== 频率统计相关方法 ====================
 
 	/**
@@ -1706,20 +1715,6 @@
 		text-align: center !important;
 	}
 
-	/* 下拉选项样式 - 仅保留必要的居中样式 */
-	:deep(.el-select-dropdown__item) {
-		/* text-align: center; */
-		/* display: flex; */
-		/* justify-content: center; */
-		/* padding: 0 32px 0 20px !important; */
-	}
-
-	/* 选项内容居中 */
-	:deep(.el-select-dropdown__item span) {
-		/* width: 100%; */
-		/* text-align: center; */
-	}
-
 	/* 号码频率统计表格特殊样式 */
 	.number-stats {
 		width: 100%;
@@ -1799,40 +1794,6 @@
 		border-collapse: collapse;
 		margin: 0;
 	}
-
-	/* 添加历史表格样式 - 已移至全局样式
-	.history-table-container {
-		margin: 10px 0;
-	}
-
-	.history-table {
-		margin: 10px auto;
-		width: 100%;
-		max-width: 500px;
-	}
-
-	.history-table th:first-child,
-	.history-table td:first-child {
-		width: 100px;
-	}
-
-	/* 调整对话框样式 - 已移至全局样式
-	:deep(.el-dialog__header) {
-		margin: 0;
-		padding: 15px 20px;
-		border-bottom: 1px solid #f0f0f0;
-	}
-
-	:deep(.el-dialog__body) {
-		padding: 20px;
-		max-height: 70vh;
-		overflow-y: auto;
-	}
-
-	:deep(.el-dialog__title) {
-		font-size: 18px;
-		font-weight: bold;
-	}*/
 
 	.period-control {
 		display: flex;

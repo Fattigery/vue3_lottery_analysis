@@ -10,8 +10,13 @@
 			</div>
 			<div class="control-item">
 				<label>分析期数:</label>
-				<el-select v-model="limit" placeholder="选择分析期数" class="select-control" disabled>
-					<el-option :value="50" label="固定50期"></el-option>
+				<el-select v-model="limit" placeholder="选择分析期数" class="select-control">
+					<el-option :value="50" label="50期"></el-option>
+					<el-option :value="100" label="100期"></el-option>
+					<el-option :value="120" label="120期"></el-option>
+					<el-option :value="150" label="150期"></el-option>
+					<el-option :value="180" label="180期"></el-option>
+					<el-option :value="200" label="200期"></el-option>
 				</el-select>
 			</div>
 			<el-button type="primary" @click="fetchAndAnalyze" class="analyze-btn">分析</el-button>
@@ -306,7 +311,7 @@
 	const caipiaoid = ref(16); // 默认为排列三
 
 	/**
-	 * 分析期数 - 固定为50期
+	 * 分析期数
 	 */
 	const limit = ref(50);
 
@@ -445,32 +450,33 @@
 			}
 		}
 
+		// 确定API接口URL
+		let apiUrl = "";
+		if (caipiaoid.value === 16) {
+			// 排列三
+			apiUrl = `http://8.152.201.135:5003/api/lottery/pls?size=${requestLimit}`;
+		} else if (caipiaoid.value === 12) {
+			// 福彩3D
+			apiUrl = `http://8.152.201.135:5003/api/lottery/fcsd?size=${requestLimit}`;
+		}
+
 		// 发起API请求获取历史数据
-		fetch(`https://api.hcaiy.com/api/index/historyList?caipiaoid=${caipiaoid.value}&limit=${requestLimit}&page=1`)
+		fetch(apiUrl)
 			.then((res) => res.json())
 			.then((data) => {
-				if (data.code === 1 && data.data) {
+				if (data.code === 200 && data.data) {
 					// 处理返回的数据
-					let dataArray = [];
-					if (data.data.data && Array.isArray(data.data.data)) {
-						dataArray = data.data.data;
-					} else if (Array.isArray(data.data)) {
-						dataArray = data.data;
-					}
+					let dataArray = data.data;
 
 					if (dataArray.length > 0) {
 						// 规范化数据格式
 						const processedData = dataArray.map((item) => {
-							const processedItem = { ...item };
-							// 统一开奖号码格式为逗号分隔
-							if (!processedItem.opencode && processedItem.number) {
-								processedItem.opencode = processedItem.number.replace(/\s+/g, ",");
-							}
-							// 统一期号字段为expect
-							if (!processedItem.expect && processedItem.issueno) {
-								processedItem.expect = processedItem.issueno;
-							}
-							return processedItem;
+							return {
+								expect: item.issue,
+								opencode: item.openCode,
+								date: item.date,
+								week: item.week,
+							};
 						});
 
 						// 更新历史数据
@@ -897,6 +903,15 @@
 	watch(latestNumbers, () => {
 		// 当开奖号码变化时，更新选中的数字
 		updateSelectedDigitsFromDrawNumber();
+	});
+
+	/**
+	 * 监听分析期数变化
+	 */
+	watch(limit, () => {
+		// 当分析期数变化时，重新获取数据并分析
+		selectedDrawPeriod.value = null; // 重置选中的期号
+		fetchAndAnalyze();
 	});
 </script>
 
