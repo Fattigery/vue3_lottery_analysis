@@ -4,7 +4,7 @@
 			<div class="control-item">
 				<label>彩票类型:</label>
 				<el-select v-model="caipiaoid" placeholder="选择彩票类型" class="select-control" disabled>
-					<el-option :value="17" label="排列五"></el-option>
+					<el-option value="plw" label="排列五"></el-option>
 				</el-select>
 			</div>
 			<div class="control-item">
@@ -18,7 +18,7 @@
 					<el-option :value="200" label="200期"></el-option>
 				</el-select>
 			</div>
-			<el-button type="primary" @click="fetchAndAnalyze" class="analyze-btn">分析</el-button>
+			<!-- <el-button type="primary" @click="fetchAndAnalyze" class="analyze-btn">分析</el-button> -->
 		</div>
 
 		<div class="latest-draw">
@@ -466,11 +466,9 @@
 
 	/**
 	 * 彩票类型ID
-	 * 16: 排列三
-	 * 12: 福彩3D
-	 * 17: 排列五
+	 * plw: 排列五
 	 */
-	const caipiaoid = ref(17); // 默认为排列五
+	const caipiaoid = ref("plw"); // 默认为排列五
 
 	/**
 	 * 分析期数 - 固定为50期
@@ -1127,6 +1125,15 @@
 	});
 
 	/**
+	 * 监听彩票类型变化
+	 */
+	watch(caipiaoid, () => {
+		// 当彩票类型变化时，重新获取数据并分析
+		selectedDrawPeriod.value = null; // 重置选中的期号
+		fetchAndAnalyze();
+	});
+
+	/**
 	 * 监听开奖号码变化
 	 */
 	watch(latestNumbers, () => {
@@ -1170,7 +1177,7 @@
 	.control-item {
 		display: flex;
 		align-items: center;
-		flex: 1;
+		/* flex: 1; */
 		min-width: 250px;
 	}
 

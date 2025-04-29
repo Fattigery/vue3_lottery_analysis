@@ -15,8 +15,8 @@
 			<div class="control-item">
 				<label>彩票类型:</label>
 				<el-select v-model="caipiaoid" placeholder="选择彩票类型" class="select-control">
-					<el-option :value="16" label="排列三"></el-option>
-					<el-option :value="12" label="福彩3D"></el-option>
+					<el-option value="pls" label="排列三"></el-option>
+					<el-option value="fcsd" label="福彩3D"></el-option>
 				</el-select>
 			</div>
 			<div class="control-item">
@@ -34,7 +34,7 @@
 					<el-option :value="150" label="往前150期"></el-option>
 				</el-select>
 			</div>
-			<el-button type="primary" @click="fetchAndAnalyze" class="analyze-btn">分析</el-button>
+			<!-- <el-button type="primary" @click="fetchAndAnalyze" class="analyze-btn">分析</el-button> -->
 		</div>
 
 		<div class="latest-draw">
@@ -233,16 +233,16 @@
 
 	/**
 	 * 彩票类型ID
-	 * 16: 排列三
-	 * 12: 福彩3D
+	 * pls: 排列三
+	 * fcsd: 福彩3D
 	 */
-	const caipiaoid = ref(16); // 默认为排列三
+	const caipiaoid = ref("pls"); // 默认为排列三
 
 	/**
 	 * 分析期数 - 决定分析往前多少期的数据
 	 * 可选值: 7, 10, 14, 20, 30, 40, 50
 	 */
-	const limit = ref(30); // 默认获取7期数据
+	const limit = ref(30); // 默认获取30期数据
 
 	/**
 	 * 存储所有获取到的历史开奖数据
@@ -466,14 +466,7 @@
 		}
 
 		// 确定API接口URL
-		let apiUrl = "";
-		if (caipiaoid.value === 16) {
-			// 排列三
-			apiUrl = `http://8.152.201.135:5003/api/lottery/pls?size=${requestLimit}`;
-		} else if (caipiaoid.value === 12) {
-			// 福彩3D
-			apiUrl = `http://8.152.201.135:5003/api/lottery/fcsd?size=${requestLimit}`;
-		}
+		let apiUrl = `http://8.152.201.135:5003/api/lottery/${caipiaoid.value}?size=${requestLimit}`;
 
 		// 发起API请求获取历史数据
 		fetch(apiUrl)
@@ -961,14 +954,7 @@
 		}
 
 		// 确定API接口URL
-		let apiUrl = "";
-		if (caipiaoid.value === 16) {
-			// 排列三
-			apiUrl = `http://8.152.201.135:5003/api/lottery/pls?size=${requestLimit}`;
-		} else if (caipiaoid.value === 12) {
-			// 福彩3D
-			apiUrl = `http://8.152.201.135:5003/api/lottery/fcsd?size=${requestLimit}`;
-		}
+		let apiUrl = `http://8.152.201.135:5003/api/lottery/${caipiaoid.value}?size=${requestLimit}`;
 
 		// 发起API请求获取历史数据
 		fetch(apiUrl)
@@ -1450,7 +1436,7 @@
 	.control-item {
 		display: flex;
 		align-items: center;
-		flex: 1;
+		/* flex: 1; */
 		min-width: 250px;
 	}
 

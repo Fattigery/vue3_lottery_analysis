@@ -4,8 +4,8 @@
 			<div class="control-item">
 				<label>彩票类型:</label>
 				<el-select v-model="caipiaoid" placeholder="选择彩票类型" class="select-control">
-					<el-option :value="16" label="排列三"></el-option>
-					<el-option :value="12" label="福彩3D"></el-option>
+					<el-option value="pl3" label="排列三"></el-option>
+					<el-option value="fcsd" label="福彩3D"></el-option>
 				</el-select>
 			</div>
 			<div class="control-item">
@@ -19,7 +19,7 @@
 					<el-option :value="200" label="200期"></el-option>
 				</el-select>
 			</div>
-			<el-button type="primary" @click="fetchAndAnalyze" class="analyze-btn">分析</el-button>
+			<!-- <el-button type="primary" @click="fetchAndAnalyze" class="analyze-btn">分析</el-button> -->
 		</div>
 
 		<div class="latest-draw">
@@ -254,10 +254,10 @@
 
 	/**
 	 * 彩票类型ID
-	 * 16: 排列三
-	 * 12: 福彩3D
+	 * pls: 排列三
+	 * fcsd: 福彩3D
 	 */
-	const caipiaoid = ref(12); // 默认为福彩3D
+	const caipiaoid = ref("fcsd"); // 默认为福彩3D
 
 	/**
 	 * 分析期数 - 默认为120期
@@ -400,14 +400,7 @@
 		}
 
 		// 确定API接口URL
-		let apiUrl = "";
-		if (caipiaoid.value === 16) {
-			// 排列三
-			apiUrl = `http://8.152.201.135:5003/api/lottery/pls?size=${requestLimit}`;
-		} else if (caipiaoid.value === 12) {
-			// 福彩3D
-			apiUrl = `http://8.152.201.135:5003/api/lottery/fcsd?size=${requestLimit}`;
-		}
+		let apiUrl = `http://8.152.201.135:5003/api/lottery/${caipiaoid.value}?size=${requestLimit}`;
 
 		// 发起API请求获取历史数据
 		fetch(apiUrl)
@@ -837,219 +830,7 @@
 </script>
 
 <style scoped>
-	.container {
-		max-width: 1000px;
-		margin: 0 auto;
-		background-color: #fff;
-		padding: 20px;
-		border-radius: 8px;
-		box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-	}
-
-	.control-panel {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 20px;
-		padding: 20px;
-		background-color: #f6f8fa;
-		border-radius: 10px;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-		flex-wrap: wrap;
-		gap: 15px;
-	}
-
-	.control-item {
-		display: flex;
-		align-items: center;
-		flex: 1;
-		min-width: 250px;
-	}
-
-	.control-item label {
-		margin-right: 10px;
-		font-weight: 600;
-		font-size: 15px;
-		color: #333;
-		white-space: nowrap;
-	}
-
-	/* 选择框样式 */
-	.select-control {
-		width: 100%;
-		max-width: 180px;
-	}
-
-	/* 期号选择框 */
-	.period-select {
-		width: auto;
-		min-width: 120px;
-		max-width: 150px;
-	}
-
-	/* 文本居中类 */
-	.text-center {
-		text-align: center !important;
-	}
-
-	.latest-draw {
-		margin-bottom: 20px;
-		padding: 20px;
-		background-color: #fffdf7;
-		border-radius: 10px;
-		border-left: 4px solid #ffa500;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-	}
-
-	.latest-draw h2 {
-		margin-bottom: 15px;
-		color: #333;
-		font-size: 18px;
-	}
-
-	.period-selector {
-		display: flex;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: 15px;
-		margin-bottom: 15px;
-	}
-
-	.period-label {
-		font-weight: 600;
-		color: #333;
-		min-width: 80px;
-	}
-
-	.period-tip {
-		font-size: 14px;
-		color: #666;
-	}
-
-	.period-tip.insufficient {
-		color: #e74c3c;
-		font-weight: 600;
-	}
-
-	.numbers {
-		display: flex;
-		justify-content: center;
-		margin: 15px 0;
-	}
-
-	.number-ball {
-		width: 45px;
-		height: 45px;
-		background-color: #e74c3c;
-		color: white;
-		border-radius: 50%;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		margin: 0 8px;
-		font-weight: bold;
-		font-size: 20px;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-	}
-
-	.analysis-section {
-		margin-bottom: 30px;
-		padding: 20px;
-		background-color: #f9f9f9;
-		border-radius: 10px;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-	}
-
-	.position-analysis-section h3 {
-		margin-bottom: 10px;
-		color: #333;
-		border-bottom: 1px solid #ddd;
-		padding-bottom: 10px;
-		font-size: 18px;
-	}
-
-	.position-analysis-section h4 {
-		margin: 20px 0 10px;
-		color: #333;
-		font-size: 16px;
-	}
-
-	.position-analysis-section p {
-		margin-bottom: 20px;
-		color: #666;
-		font-size: 14px;
-	}
-
-	.selection-note {
-		color: #e74c3c;
-		font-size: 14px;
-		font-style: italic;
-		margin-bottom: 15px;
-	}
-
-	.freq-description {
-		color: #606266;
-		font-size: 13px;
-		font-style: italic;
-		margin-top: -5px;
-		margin-bottom: 10px;
-	}
-
-	.position-tabs {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
-		margin-bottom: 20px;
-	}
-
-	.position-tab {
-		width: 40px;
-		height: 40px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background-color: #eee;
-		border-radius: 5px;
-		font-weight: bold;
-		transition: all 0.2s ease;
-		cursor: default;
-	}
-
-	.position-tab:hover {
-		background-color: #eee;
-	}
-
-	.position-tab.active {
-		background-color: #e74c3c;
-		color: white;
-	}
-
-	.position-tab.related {
-		background-color: #f39c8f;
-		color: white;
-	}
-
-	.loading {
-		text-align: center;
-		padding: 20px;
-		font-style: italic;
-		color: #666;
-	}
-
-	.analyze-btn {
-		height: 40px;
-		min-width: 100px;
-		font-weight: 600;
-		font-size: 15px;
-		border-radius: 6px;
-		box-shadow: 0 2px 4px rgba(76, 175, 80, 0.2);
-	}
-
-	@media (max-width: 768px) {
-		.position-tabs {
-			justify-content: center;
-		}
-	}
+	@import "./style/index.css";
 </style>
 
 <!-- 使用全局样式覆盖Element Plus组件样式 -->
@@ -1120,5 +901,9 @@
 	.el-table .cell {
 		line-height: normal;
 		padding: 5px;
+	}
+
+	.example-showcase .el-loading-mask {
+		z-index: 9;
 	}
 </style>

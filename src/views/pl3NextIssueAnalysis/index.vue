@@ -4,8 +4,8 @@
 			<div class="control-item">
 				<label>彩票类型:</label>
 				<el-select v-model="caipiaoid" placeholder="选择彩票类型" class="select-control">
-					<el-option :value="16" label="排列三"></el-option>
-					<el-option :value="12" label="福彩3D"></el-option>
+					<el-option value="pls" label="排列三"></el-option>
+					<el-option value="fcsd" label="福彩3D"></el-option>
 				</el-select>
 			</div>
 			<div class="control-item">
@@ -19,7 +19,7 @@
 					<el-option :value="200" label="200期"></el-option>
 				</el-select>
 			</div>
-			<el-button type="primary" @click="fetchAndAnalyze" class="analyze-btn">分析</el-button>
+			<!-- <el-button type="primary" @click="fetchAndAnalyze" class="analyze-btn">分析</el-button> -->
 		</div>
 
 		<div class="latest-draw">
@@ -305,10 +305,10 @@
 
 	/**
 	 * 彩票类型ID
-	 * 16: 排列三
-	 * 12: 福彩3D
+	 * pls: 排列三
+	 * fcsd: 福彩3D
 	 */
-	const caipiaoid = ref(16); // 默认为排列三
+	const caipiaoid = ref("pls"); // 默认为排列三
 
 	/**
 	 * 分析期数
@@ -451,14 +451,7 @@
 		}
 
 		// 确定API接口URL
-		let apiUrl = "";
-		if (caipiaoid.value === 16) {
-			// 排列三
-			apiUrl = `http://8.152.201.135:5003/api/lottery/pls?size=${requestLimit}`;
-		} else if (caipiaoid.value === 12) {
-			// 福彩3D
-			apiUrl = `http://8.152.201.135:5003/api/lottery/fcsd?size=${requestLimit}`;
-		}
+		let apiUrl = `http://8.152.201.135:5003/api/lottery/${caipiaoid.value}?size=${requestLimit}`;
 
 		// 发起API请求获取历史数据
 		fetch(apiUrl)
@@ -941,7 +934,7 @@
 	.control-item {
 		display: flex;
 		align-items: center;
-		flex: 1;
+		/* flex: 1; */
 		min-width: 250px;
 	}
 

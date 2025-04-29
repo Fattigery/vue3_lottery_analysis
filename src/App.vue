@@ -35,7 +35,6 @@
 				text-color="#fff"
 				active-text-color="#ffd04b"
 				class="main-nav">
-				<el-menu-item index="/home">首页</el-menu-item>
 				<el-menu-item index="/number-search">000-999号码查询</el-menu-item>
 				<el-menu-item index="/lottery-analysis">下一期开奖号码分析</el-menu-item>
 				<el-menu-item index="/p3-next-issue-analysis">排列三号码推测</el-menu-item>

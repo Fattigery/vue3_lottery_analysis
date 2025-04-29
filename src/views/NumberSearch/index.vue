@@ -1,6 +1,6 @@
 <template>
 	<div class="container">
-		<h1>000-999号码查找器</h1>
+		<h1>000-999号码查找</h1>
 		<div class="input-group">
 			<input type="text" v-model="searchInput1" placeholder="输入第一个数字" maxlength="3" />
 			<input type="text" v-model="searchInput2" placeholder="输入第二个数字" maxlength="3" />

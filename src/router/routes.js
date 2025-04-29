@@ -3,18 +3,12 @@ import LotteryAnalysis from "@/views/LotteryAnalysis/index.vue";
 import pl3NextIssueAnalysis from "@/views/pl3NextIssueAnalysis/index.vue";
 import pl5NextIssueAnalysis from "@/views/pl5NextIssueAnalysis/index.vue";
 import fc3dNextIssueAnalysis from "@/views/fc3dNextIssueAnalysis/index.vue";
-import Home from "@/views/Home/index.vue";
 import killCode from "@/views/killCode/index.vue";
 
 export const routes = [
 	{
 		path: "/",
-		redirect: "/home",
-	},
-	{
-		path: "/home",
-		name: "home",
-		component: Home,
+		redirect: "/lottery-analysis",
 	},
 	{
 		path: "/number-search",
