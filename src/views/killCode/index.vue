@@ -16,7 +16,36 @@
 					<el-option :value="120" label="120期"></el-option>
 				</el-select>
 			</div>
-			<!-- <el-button type="primary" @click="fetchAndAnalyze" class="analyze-btn">分析</el-button> -->
+		</div>
+
+		<!-- 新增分析期号选择区域 -->
+		<div class="latest-draw">
+			<h2>当前分析期号</h2>
+			<div class="period-selector">
+				<div class="period-label">
+					期号: <b>{{ latestDraw.expect || "--" }}</b>
+				</div>
+				<el-select
+					v-model="selectedDrawPeriod"
+					placeholder="选择期号"
+					@change="handleDrawPeriodChange"
+					class="period-select"
+					:disabled="historyData.length === 0">
+					<el-option
+						v-for="item in historyData"
+						:key="item.expect"
+						:label="item.expect"
+						:value="item.expect"></el-option>
+				</el-select>
+				<div class="period-tip" :class="{ insufficient: isDataInsufficient }">
+					{{ remainCountTip }}
+				</div>
+			</div>
+			<div class="numbers">
+				<div v-for="(num, index) in latestNumbers" :key="index" class="number-ball">
+					{{ num }}
+				</div>
+			</div>
 		</div>
 
 		<!-- 分析结果展示区域 -->
@@ -27,18 +56,14 @@
 				<p>分析百位号码在历史数据中出现的下一期号码规律</p>
 				<p class="selection-note">
 					当前分析的百位号码为 <span class="current-digit">{{ selectedHundredDigit }}</span
-					>，点击下方数字切换分析
+					>（自动与所选期号同步）
 				</p>
-
 				<div class="position-tabs">
 					<div
 						v-for="num in 10"
 						:key="`hundred-${num - 1}`"
 						class="position-tab"
-						:class="{
-							active: selectedHundredDigit === num - 1,
-						}"
-						@click="selectHundredDigit(num - 1)">
+						:class="{ active: selectedHundredDigit === num - 1 }">
 						{{ num - 1 }}
 					</div>
 				</div>
@@ -119,18 +144,14 @@
 				<p>分析十位号码在历史数据中出现的下一期号码规律</p>
 				<p class="selection-note">
 					当前分析的十位号码为 <span class="current-digit">{{ selectedTenDigit }}</span
-					>，点击下方数字切换分析
+					>（自动与所选期号同步）
 				</p>
-
 				<div class="position-tabs">
 					<div
 						v-for="num in 10"
 						:key="`ten-${num - 1}`"
 						class="position-tab"
-						:class="{
-							active: selectedTenDigit === num - 1,
-						}"
-						@click="selectTenDigit(num - 1)">
+						:class="{ active: selectedTenDigit === num - 1 }">
 						{{ num - 1 }}
 					</div>
 				</div>
@@ -209,18 +230,14 @@
 				<p>分析个位号码在历史数据中出现的下一期号码规律</p>
 				<p class="selection-note">
 					当前分析的个位号码为 <span class="current-digit">{{ selectedOneDigit }}</span
-					>，点击下方数字切换分析
+					>（自动与所选期号同步）
 				</p>
-
 				<div class="position-tabs">
 					<div
 						v-for="num in 10"
 						:key="`one-${num - 1}`"
 						class="position-tab"
-						:class="{
-							active: selectedOneDigit === num - 1,
-						}"
-						@click="selectOneDigit(num - 1)">
+						:class="{ active: selectedOneDigit === num - 1 }">
 						{{ num - 1 }}
 					</div>
 				</div>
@@ -286,6 +303,50 @@
 										'zero-count-cell': getPositionNextFrequency(2, selectedOneDigit, i - 1) === 0,
 									}">
 									{{ getPositionNextFrequency(2, selectedOneDigit, i - 1) }}
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			<!-- 总和统计 -->
+			<div class="analysis-section" v-if="!isAnalysisLoading">
+				<h3>总和统计 ({{ analysisRange }})</h3>
+				<div class="stats-table-container">
+					<table class="stats-table">
+						<thead>
+							<tr>
+								<th>位置</th>
+								<th v-for="i in 10" :key="`total-header-${i - 1}`">{{ i - 1 }}</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td class="position-label">百位</td>
+								<td
+									v-for="i in 10"
+									:key="`total-hundred-cell-${i - 1}`"
+									:class="{ 'zero-count-cell': totalNextFrequencyStats.hundred[i - 1] === 0 }">
+									{{ totalNextFrequencyStats.hundred[i - 1] }}
+								</td>
+							</tr>
+							<tr>
+								<td class="position-label">十位</td>
+								<td
+									v-for="i in 10"
+									:key="`total-ten-cell-${i - 1}`"
+									:class="{ 'zero-count-cell': totalNextFrequencyStats.ten[i - 1] === 0 }">
+									{{ totalNextFrequencyStats.ten[i - 1] }}
+								</td>
+							</tr>
+							<tr>
+								<td class="position-label">个位</td>
+								<td
+									v-for="i in 10"
+									:key="`total-one-cell-${i - 1}`"
+									:class="{ 'zero-count-cell': totalNextFrequencyStats.one[i - 1] === 0 }">
+									{{ totalNextFrequencyStats.one[i - 1] }}
 								</td>
 							</tr>
 						</tbody>
@@ -368,6 +429,11 @@
 	 */
 	const analysisLoadingText = ref('请点击"分析"按钮开始分析');
 
+	/**
+	 * 当前分析期号
+	 */
+	const selectedDrawPeriod = ref(null);
+
 	// ==================== 计算属性 ====================
 
 	/**
@@ -380,37 +446,84 @@
 	/**
 	 * 获取最新一期的开奖号码数组
 	 */
-	// const latestNumbers = computed(() => {
-	// 	if (historyData.value.length === 0) return ["-", "-", "-"];
+	const latestNumbers = computed(() => {
+		if (historyData.value.length === 0) return ["-", "-", "-"];
+		const draw = historyData.value.find((item) => item.expect === selectedDrawPeriod.value) || historyData.value[0];
+		if (draw.opencode) {
+			return draw.opencode.split(",");
+		} else if (draw.number) {
+			return draw.number.split(/\s+/);
+		}
+		return ["-", "-", "-"];
+	});
 
-	// 	const draw = historyData.value[0]; // 始终使用最新一期
+	/**
+	 * 统计三个分析区频率统计表格的三行之和
+	 */
+	const totalNextFrequencyStats = computed(() => {
+		// 统计百位
+		const hundred = Array(10).fill(0);
+		for (let i = 0; i < 10; i++) {
+			hundred[i] =
+				getPositionNextFrequency(0, selectedHundredDigit.value, i) +
+				getAllPositionsNextFrequency(1, selectedTenDigit.value, 0, i) +
+				getAllPositionsNextFrequency(2, selectedOneDigit.value, 0, i);
+		}
+		// 统计十位
+		const ten = Array(10).fill(0);
+		for (let i = 0; i < 10; i++) {
+			ten[i] =
+				getAllPositionsNextFrequency(0, selectedHundredDigit.value, 1, i) +
+				getPositionNextFrequency(1, selectedTenDigit.value, i) +
+				getAllPositionsNextFrequency(2, selectedOneDigit.value, 1, i);
+		}
+		// 统计个位
+		const one = Array(10).fill(0);
+		for (let i = 0; i < 10; i++) {
+			one[i] =
+				getAllPositionsNextFrequency(0, selectedHundredDigit.value, 2, i) +
+				getAllPositionsNextFrequency(1, selectedTenDigit.value, 2, i) +
+				getPositionNextFrequency(2, selectedOneDigit.value, i);
+		}
+		return { hundred, ten, one };
+	});
 
-	// 	if (draw.opencode) {
-	// 		return draw.opencode.split(",");
-	// 	} else if (draw.number) {
-	// 		return draw.number.split(/\s+/);
-	// 	}
+	/**
+	 * 分析期号范围描述和数据条数提示
+	 */
+	const remainCountTip = computed(() => {
+		if (!selectedDrawPeriod.value || historyData.value.length === 0) return "";
+		const idx = historyData.value.findIndex((item) => item.expect === selectedDrawPeriod.value);
+		if (idx < 0) return "";
+		const dataCount = historyData.value.length - idx;
+		const participatingData = Math.min(dataCount, limit.value);
+		const isInsufficient = participatingData < limit.value;
+		return `有 ${participatingData} 条数据参与分析${isInsufficient ? "（不足）" : ""}`;
+	});
 
-	// 	return ["-", "-", "-"];
-	// });
+	/**
+	 * 判断数据是否不足
+	 */
+	const isDataInsufficient = computed(() => {
+		if (!selectedDrawPeriod.value || historyData.value.length === 0) return false;
+		const idx = historyData.value.findIndex((item) => item.expect === selectedDrawPeriod.value);
+		if (idx < 0) return false;
+		return historyData.value.length - idx < limit.value;
+	});
 
 	// ==================== 核心方法 ====================
 
 	/**
 	 * 获取彩票历史数据并进行分析
 	 */
-	function fetchAndAnalyze() {
-		// 设置加载状态
+	function fetchAndAnalyze(options = {}) {
 		isAnalysisLoading.value = true;
 		analysisLoadingText.value = "正在获取数据，请稍候...";
-
-		// 直接使用分析期数作为请求的数据量
-		const requestLimit = limit.value;
-
-		// 确定API接口URL
+		let requestLimit = limit.value;
+		if (options.minSize) {
+			requestLimit = Math.max(requestLimit, options.minSize);
+		}
 		let apiUrl = `http://8.152.201.135:5003/api/lottery/${caipiaoid.value}?size=${requestLimit}`;
-
-		// 发起API请求获取历史数据
 		fetch(apiUrl)
 			.then((res) => {
 				if (!res.ok) {
@@ -420,11 +533,8 @@
 			})
 			.then((data) => {
 				if (data.code === 200 && data.data) {
-					// 处理返回的数据
 					let dataArray = data.data;
-
 					if (dataArray.length > 0) {
-						// 规范化数据格式
 						const processedData = dataArray.map((item) => {
 							return {
 								expect: item.issue,
@@ -433,25 +543,35 @@
 								week: item.week,
 							};
 						});
-
-						// 更新历史数据
-						historyData.value = processedData;
-
-						// 直接分析最新数据
-						analyzeData();
+						if (options.append && historyData.value.length > 0) {
+							// 合并新老数据，去重（以期号为唯一键）
+							const map = {};
+							[...processedData, ...historyData.value].forEach((item) => {
+								map[item.expect] = item;
+							});
+							historyData.value = Object.values(map).sort((a, b) => b.expect.localeCompare(a.expect));
+						} else {
+							historyData.value = processedData;
+						}
+						if (!selectedDrawPeriod.value) {
+							selectedDrawPeriod.value = historyData.value[0].expect;
+						} else {
+							const existingOption = historyData.value.find((item) => item.expect === selectedDrawPeriod.value);
+							if (!existingOption) {
+								selectedDrawPeriod.value = historyData.value[0].expect;
+							}
+						}
+						analyzeDataBySelectedPeriod();
 					} else {
-						// 处理空数据情况
 						isAnalysisLoading.value = true;
 						analysisLoadingText.value = "获取数据失败，请重试";
 					}
 				} else {
-					// 处理API返回错误
 					isAnalysisLoading.value = true;
 					analysisLoadingText.value = "获取数据失败，请重试";
 				}
 			})
 			.catch((error) => {
-				// 处理网络错误
 				isAnalysisLoading.value = true;
 				analysisLoadingText.value = "获取数据失败，请重试";
 				console.error("Error fetching data:", error);
@@ -694,33 +814,25 @@
 	}
 
 	/**
-	 * 根据最新开奖号码自动选择分析数字
+	 * 根据所选期号自动选择分析数字
 	 */
 	function updateSelectedDigitsFromDrawNumber() {
 		// 确保有开奖号码
-		if (historyData.value.length === 0) return;
-
-		// 获取最新一期数据
-		const latestDraw = historyData.value[0];
-		if (!latestDraw) return;
-
-		// 解析最新一期的开奖号码
+		if (historyData.value.length === 0 || !selectedDrawPeriod.value) return;
+		// 获取所选期号的数据
+		const selectedDraw = historyData.value.find((item) => item.expect === selectedDrawPeriod.value);
+		if (!selectedDraw) return;
+		// 解析所选期号的开奖号码
 		let numbers = [];
-		if (latestDraw.opencode) {
-			numbers = latestDraw.opencode.split(",");
-		} else if (latestDraw.number) {
-			numbers = latestDraw.number.split(/\s+/);
+		if (selectedDraw.opencode) {
+			numbers = selectedDraw.opencode.split(",");
+		} else if (selectedDraw.number) {
+			numbers = selectedDraw.number.split(/\s+/);
 		}
-
 		// 如果解析成功，更新选中的百位、十位和个位数字
 		if (numbers.length >= 3) {
-			// 更新百位选中的数字
 			selectRelatedDigits(0, parseInt(numbers[0]));
-
-			// 更新十位选中的数字
 			selectRelatedDigits(1, parseInt(numbers[1]));
-
-			// 更新个位选中的数字
 			selectRelatedDigits(2, parseInt(numbers[2]));
 		}
 	}
@@ -754,28 +866,45 @@
 	}
 
 	/**
-	 * 选择百位数字进行分析
-	 * @param {number} digit 要分析的数字(0-9)
+	 * 切换期号时处理
 	 */
-	function selectHundredDigit(digit) {
-		selectedHundredDigit.value = digit;
-		// 可以在这里添加额外的处理逻辑，例如滚动到相应的结果区域
+	function handleDrawPeriodChange() {
+		if (!selectedDrawPeriod.value || historyData.value.length === 0) return;
+		const idx = historyData.value.findIndex((item) => item.expect === selectedDrawPeriod.value);
+		if (idx === -1) return;
+		const availableData = historyData.value.length - idx;
+		if (availableData < limit.value) {
+			// 需要补充数据
+			isAnalysisLoading.value = true;
+			analysisLoadingText.value = `所选期号的数据不足${limit.value}期，正在自动补充数据...`;
+			fetchAndAnalyze({ append: true, minSize: limit.value + idx });
+		} else {
+			analyzeDataBySelectedPeriod();
+			updateSelectedDigitsFromDrawNumber();
+		}
 	}
 
 	/**
-	 * 选择十位数字进行分析
-	 * @param {number} digit 要分析的数字(0-9)
+	 * 按期号分析数据
 	 */
-	function selectTenDigit(digit) {
-		selectedTenDigit.value = digit;
-	}
-
-	/**
-	 * 选择个位数字进行分析
-	 * @param {number} digit 要分析的数字(0-9)
-	 */
-	function selectOneDigit(digit) {
-		selectedOneDigit.value = digit;
+	function analyzeDataBySelectedPeriod() {
+		if (!selectedDrawPeriod.value || !historyData.value.length) return;
+		const idx = historyData.value.findIndex((item) => item.expect === selectedDrawPeriod.value);
+		if (idx === -1) return;
+		let dataToAnalyze = historyData.value.slice(idx);
+		const maxDataCount = Math.min(dataToAnalyze.length, limit.value);
+		dataToAnalyze = dataToAnalyze.slice(0, maxDataCount);
+		if (dataToAnalyze.length < 2) {
+			isAnalysisLoading.value = true;
+			analysisLoadingText.value = "数据不足，无法进行分析";
+			return;
+		}
+		const firstPeriod = dataToAnalyze[dataToAnalyze.length - 1]?.expect || "--";
+		const lastPeriod = dataToAnalyze[0]?.expect || "--";
+		analysisRange.value = `从${firstPeriod}期到${lastPeriod}期`;
+		analyzePositionData(dataToAnalyze);
+		updateSelectedDigitsFromDrawNumber();
+		isAnalysisLoading.value = false;
 	}
 
 	/**
@@ -796,16 +925,13 @@
 		} else if (fromPosition === 2) {
 			statsArray = oneNextStats.value;
 		}
-
 		// 如果没有匹配数据，返回 0
 		if (!statsArray[fromDigit] || !statsArray[fromDigit].matchData) {
 			return 0;
 		}
-
 		// 计算下一期特定位置的数字频率
 		let count = 0;
 		const matchData = statsArray[fromDigit].matchData;
-
 		for (const item of matchData) {
 			// 解析下一期号码
 			let nextNumbers = [];
@@ -814,18 +940,15 @@
 			} else if (item.nextNumber) {
 				nextNumbers = item.nextNumber.split(/\s+/).map((num) => parseInt(num));
 			}
-
 			// 如果解析失败或数字不足，跳过
 			if (nextNumbers.length <= toPosition) {
 				continue;
 			}
-
 			// 检查下一期指定位置的数字是否匹配
 			if (nextNumbers[toPosition] === toDigit) {
 				count++;
 			}
 		}
-
 		return count;
 	}
 
@@ -836,6 +959,9 @@
 	 */
 	onMounted(() => {
 		fetchAndAnalyze();
+		setTimeout(() => {
+			updateSelectedDigitsFromDrawNumber();
+		}, 1000);
 	});
 
 	/**
@@ -843,6 +969,7 @@
 	 */
 	watch(caipiaoid, () => {
 		// 当彩票类型变化时，重新获取数据并分析
+		selectedDrawPeriod.value = null;
 		fetchAndAnalyze();
 	});
 
@@ -851,7 +978,13 @@
 	 */
 	watch(limit, () => {
 		// 当分析期数变化时，重新获取数据并分析
+		selectedDrawPeriod.value = null;
 		fetchAndAnalyze();
+	});
+
+	// 监听所选期号变化，自动同步号码分析下方数字条
+	watch(selectedDrawPeriod, () => {
+		updateSelectedDigitsFromDrawNumber();
 	});
 </script>
 

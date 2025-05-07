@@ -450,6 +450,30 @@
 					</table>
 				</div>
 			</div>
+
+			<!-- 五个位置分析后插入 -->
+			<div class="analysis-section" v-if="!isAnalysisLoading">
+				<h3>五个位置总和统计 ({{ analysisRange }})</h3>
+				<div class="stats-table-container">
+					<table class="stats-table">
+						<thead>
+							<tr>
+								<th v-for="i in 10" :key="`total-header-${i - 1}`">{{ i - 1 }}</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td
+									v-for="i in 10"
+									:key="`total-cell-${i - 1}`"
+									:class="{ 'zero-count-cell': totalNextFrequencyStats[`digit${i - 1}`] === 0 }">
+									{{ totalNextFrequencyStats[`digit${i - 1}`] }}
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
 		</div>
 
 		<div class="analysis-results" v-else>
@@ -604,6 +628,22 @@
 		if (idx < 0) return false;
 
 		return historyData.value.length - idx < limit.value;
+	});
+
+	/**
+	 * 统计"下一期号码出现频率统计"五行的和
+	 */
+	const totalNextFrequencyStats = computed(() => {
+		const result = {};
+		for (let i = 0; i < 10; i++) {
+			result[`digit${i}`] =
+				getPositionNextFrequency(0, selectedTenThousandDigit.value, i) +
+				getPositionNextFrequency(1, selectedThousandDigit.value, i) +
+				getPositionNextFrequency(2, selectedHundredDigit.value, i) +
+				getPositionNextFrequency(3, selectedTenDigit.value, i) +
+				getPositionNextFrequency(4, selectedOneDigit.value, i);
+		}
+		return result;
 	});
 
 	// ==================== 核心方法 ====================
