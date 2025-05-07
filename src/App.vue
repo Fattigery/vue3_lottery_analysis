@@ -35,11 +35,11 @@
 				text-color="#fff"
 				active-text-color="#ffd04b"
 				class="main-nav">
-				<el-menu-item index="/number-search">000-999号码查询</el-menu-item>
+				<!-- <el-menu-item index="/number-search">000-999号码查询</el-menu-item> -->
 				<el-menu-item index="/lottery-analysis">下一期开奖号码分析</el-menu-item>
-				<el-menu-item index="/p3-next-issue-analysis">排列三号码推测</el-menu-item>
+				<el-menu-item index="/p3-next-issue-analysis">开奖号码与相邻号码推测下一期号码</el-menu-item>
+				<el-menu-item index="/fc3d-next-issue-analysis">只开奖号码推测下一期号码</el-menu-item>
 				<el-menu-item index="/pl5-next-issue-analysis">排列五号码推测</el-menu-item>
-				<el-menu-item index="/fc3d-next-issue-analysis">福彩3D号码推测</el-menu-item>
 				<el-menu-item index="/kill-code">杀码</el-menu-item>
 			</el-menu>
 		</div>

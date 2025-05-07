@@ -4,7 +4,7 @@
 			<div class="control-item">
 				<label>彩票类型:</label>
 				<el-select v-model="caipiaoid" placeholder="选择彩票类型" class="select-control">
-					<el-option value="pl3" label="排列三"></el-option>
+					<el-option value="pls" label="排列三"></el-option>
 					<el-option value="fcsd" label="福彩3D"></el-option>
 				</el-select>
 			</div>

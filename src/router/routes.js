@@ -1,8 +1,13 @@
 import NumberSearch from "@/views/NumberSearch/index.vue";
+// 下一期开奖号码分析
 import LotteryAnalysis from "@/views/LotteryAnalysis/index.vue";
+// 开奖号码与相邻号码推测下一期号码
 import pl3NextIssueAnalysis from "@/views/pl3NextIssueAnalysis/index.vue";
-import pl5NextIssueAnalysis from "@/views/pl5NextIssueAnalysis/index.vue";
+// 只开奖号码推测下一期号码
 import fc3dNextIssueAnalysis from "@/views/fc3dNextIssueAnalysis/index.vue";
+// 排列五号码推测
+import pl5NextIssueAnalysis from "@/views/pl5NextIssueAnalysis/index.vue";
+// 杀码
 import killCode from "@/views/killCode/index.vue";
 
 export const routes = [
